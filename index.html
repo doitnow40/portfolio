@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포트폴리오 관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── 기본 리셋 & 변수 ──────────────────────────────────────── */
+:root {
+  --bg:        #0d1117;
+  --bg2:       #161b22;
+  --bg3:       #21262d;
+  --border:    #30363d;
+  --text:      #e6edf3;
+  --text2:     #8b949e;
+  --green:     #3fb950;
+  --red:       #f85149;
+  --blue:      #58a6ff;
+  --yellow:    #d29922;
+  --purple:    #bc8cff;
+  --accent:    #1f6feb;
+  --radius:    8px;
+  --font:      'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── 레이아웃 ─────────────────────────────────────────────── */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-size:18px; font-weight:700; color:var(--blue); letter-spacing:-0.5px; }
+.logo span { color: var(--text2); font-weight:400; font-size:13px; margin-left:8px; }
+
+.header-right { display:flex; align-items:center; gap:12px; }
+.last-updated { font-size:12px; color:var(--text2); }
+.btn-refresh {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size:13px;
+  transition: all .2s;
+}
+.btn-refresh:hover { border-color:var(--blue); color:var(--blue); }
+
+main { padding: 24px; max-width: 1600px; margin: 0 auto; width:100%; }
+
+/* ── 요약 카드 ────────────────────────────────────────────── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card-label { font-size:12px; color:var(--text2); margin-bottom:8px; }
+.card-value { font-size:22px; font-weight:700; }
+.card-sub   { font-size:12px; color:var(--text2); margin-top:4px; }
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.neu { color: var(--text); }
+
+/* ── 탭 네비게이션 ────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.tab {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text2);
+  font-size:13px;
+  white-space: nowrap;
+  transition: all .2s;
+}
+.tab:hover   { color:var(--text); }
+.tab.active  { color:var(--blue); border-bottom-color:var(--blue); }
+
+/* ── 콘텐츠 패널 ──────────────────────────────────────────── */
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ── 차트 영역 ────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width:900px) { .chart-grid { grid-template-columns:1fr; } }
+.chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.chart-title { font-size:14px; font-weight:600; margin-bottom:16px; color:var(--text2); }
+.chart-wrap  { position:relative; height:260px; }
+
+/* ── 테이블 ───────────────────────────────────────────────── */
+.table-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.table-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.table-title { font-size:14px; font-weight:600; }
+.table-actions { display:flex; gap:8px; }
+
+table { width:100%; border-collapse:collapse; }
+thead th {
+  background: var(--bg3);
+  padding: 10px 14px;
+  text-align:right;
+  font-size:12px;
+  color:var(--text2);
+  font-weight:500;
+  white-space:nowrap;
+}
+thead th:first-child { text-align:left; }
+thead th:nth-child(2) { text-align:left; }
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background: var(--bg3); }
+tbody td {
+  padding: 10px 14px;
+  text-align:right;
+  font-size:13px;
+  white-space:nowrap;
+}
+tbody td:first-child { text-align:left; }
+tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
+
+.badge {
+  display:inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size:11px;
+  font-weight:600;
+}
+.badge-kr  { background:#1f3a5f; color:#58a6ff; }
+.badge-us  { background:#3a1f1f; color:#f85149; }
+.badge-isa { background:#1f3a2a; color:#3fb950; }
+.badge-irp { background:#3a2a1f; color:#d29922; }
+
+/* ── 모달 (종목 추가/수정) ───────────────────────────────── */
+.modal-overlay {
+  display:none;
+  position:fixed; inset:0;
+  background: rgba(0,0,0,.7);
+  z-index:200;
+  align-items:center;
+  justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  width: 440px;
+  max-width: 95vw;
+}
+.modal-title { font-size:16px; font-weight:700; margin-bottom:20px; }
+.form-group  { margin-bottom:16px; }
+.form-label  { font-size:12px; color:var(--text2); margin-bottom:6px; display:block; }
+.form-input, .form-select {
+  width:100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size:14px;
+  outline:none;
+  transition: border-color .2s;
+}
+.form-input:focus, .form-select:focus { border-color:var(--blue); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+.btn-primary {
+  background: var(--accent);
+  color:#fff;
+  border:none;
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  cursor:pointer;
+  font-size:14px;
+  font-weight:600;
+  transition: opacity .2s;
+}
+.btn-primary:hover { opacity:.85; }
+.btn-cancel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color:var(--text);
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  cursor:pointer;
+  font-size:14px;
+}
+
+/* ── 설정 패널 ────────────────────────────────────────────── */
+.settings-section { margin-bottom:28px; }
+.settings-title {
+  font-size:14px; font-weight:600;
+  border-bottom: 1px solid var(--border);
+  padding-bottom:10px;
+  margin-bottom:16px;
+}
+.settings-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom:none; }
+.settings-label { font-size:13px; }
+.settings-value { font-size:13px; color:var(--text2); }
+
+/* ── 로딩 ─────────────────────────────────────────────────── */
+.loading {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:300px;
+  gap:16px;
+  color:var(--text2);
+}
+.spinner {
+  width:36px; height:36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius:50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 에러 배너 ────────────────────────────────────────────── */
+.error-banner {
+  background: #2d1a1a;
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  color:var(--red);
+  font-size:13px;
+  display:none;
+}
+
+/* ── 계좌 필터 칩 ─────────────────────────────────────────── */
+.filter-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.chip {
+  padding: 4px 12px;
+  border-radius:20px;
+  font-size:12px;
+  cursor:pointer;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color:var(--text2);
+  transition: all .2s;
+}
+.chip.active { border-color:var(--blue); color:var(--blue); background:#1f2d3d; }
+
+/* ── 구분선 행 ────────────────────────────────────────────── */
+.account-group-row td {
+  background: var(--bg3);
+  color:var(--text2);
+  font-size:12px;
+  font-weight:600;
+  padding: 6px 14px !important;
+}
+
+/* ── 액션 버튼 ────────────────────────────────────────────── */
+.btn-icon {
+  background:none;
+  border:none;
+  cursor:pointer;
+  color:var(--text2);
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:14px;
+  transition: color .2s;
+}
+.btn-icon:hover { color:var(--text); }
+
+/* ── GAS URL 설정 안내 ────────────────────────────────────── */
+.setup-banner {
+  background: #1a2a3a;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom:24px;
+}
+.setup-banner h3 { color:var(--blue); margin-bottom:8px; }
+.setup-banner p  { color:var(--text2); font-size:13px; line-height:1.6; }
+.setup-banner code {
+  background:var(--bg3);
+  padding:2px 6px;
+  border-radius:4px;
+  font-family:monospace;
+  color:var(--yellow);
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── 헤더 ──────────────────────────────────────────────── -->
+<header>
+  <div class="logo">📈 포트폴리오 <span id="headerSub">로딩중...</span></div>
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">–</span>
+    <button class="btn-refresh" onclick="loadData()">⟳ 새로고침</button>
+    <button class="btn-refresh" onclick="openModal()">+ 종목 추가</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ── GAS URL 미설정 시 안내 ─────────────────────────────── -->
+<div class="setup-banner" id="setupBanner" style="display:none">
+  <h3>⚙️ 초기 설정 필요</h3>
+  <p>
+    이 파일 하단의 <code>GAS_URL</code> 변수에 Google Apps Script 배포 URL을 입력해야 합니다.<br>
+    GAS 편집기 → 배포 → 새 배포 → 웹 앱으로 배포 → URL 복사 후 붙여넣기
+  </p>
+</div>
+
+<!-- ── 에러 배너 ─────────────────────────────────────────── -->
+<div class="error-banner" id="errorBanner"></div>
+
+<!-- ── 요약 카드 ─────────────────────────────────────────── -->
+<div class="summary-grid">
+  <div class="card">
+    <div class="card-label">총 평가금액</div>
+    <div class="card-value neu" id="totalEval">–</div>
+    <div class="card-sub" id="totalCost">매수금액 –</div>
+  </div>
+  <div class="card">
+    <div class="card-label">총 평가손익</div>
+    <div class="card-value" id="totalProfit">–</div>
+    <div class="card-sub" id="totalProfitPct">수익률 –</div>
+  </div>
+  <div class="card">
+    <div class="card-label">보유 종목 수</div>
+    <div class="card-value neu" id="totalCount">–</div>
+    <div class="card-sub" id="accountCount">계좌 –개</div>
+  </div>
+  <div class="card">
+    <div class="card-label">USD/KRW 환율</div>
+    <div class="card-value neu" id="exchangeRate">–</div>
+    <div class="card-sub" id="rateUpdated">–</div>
+  </div>
+</div>
+
+<!-- ── 탭 ───────────────────────────────────────────────── -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">전체 현황</div>
+  <div class="tab" onclick="switchTab('byAccount')">계좌별</div>
+  <div class="tab" onclick="switchTab('charts')">차트 분석</div>
+  <div class="tab" onclick="switchTab('settings')">설정</div>
+</div>
+
+<!-- ── 패널: 전체 현황 ─────────────────────────────────── -->
+<div class="panel active" id="panel-overview">
+  <div class="filter-chips" id="ownerFilter"></div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title">보유 종목 전체</span>
+      <div class="table-actions">
+        <select class="form-select" style="width:auto;padding:4px 10px;font-size:12px" id="sortSelect" onchange="renderTable()">
+          <option value="profit_pct_desc">수익률 ↓</option>
+          <option value="profit_pct_asc">수익률 ↑</option>
+          <option value="eval_desc">평가금액 ↓</option>
+          <option value="account">계좌별</option>
+          <option value="sector">섹터별</option>
+        </select>
+      </div>
+    </div>
+    <div id="tableContainer">
+      <div class="loading"><div class="spinner"></div><span>데이터 불러오는 중...</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 패널: 계좌별 ────────────────────────────────────── -->
+<div class="panel" id="panel-byAccount">
+  <div id="byAccountContainer">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ── 패널: 차트 분석 ─────────────────────────────────── -->
+<div class="panel" id="panel-charts">
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">섹터별 비중</div>
+      <div class="chart-wrap"><canvas id="chartSector"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">계좌별 비중</div>
+      <div class="chart-wrap"><canvas id="chartAccount"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">국내 / 해외 비중</div>
+      <div class="chart-wrap"><canvas id="chartMarket"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">소유자별 비중</div>
+      <div class="chart-wrap"><canvas id="chartOwner"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 패널: 설정 ──────────────────────────────────────── -->
+<div class="panel" id="panel-settings">
+  <div class="settings-section">
+    <div class="settings-title">연결 정보</div>
+    <div class="settings-row">
+      <span class="settings-label">GAS URL</span>
+      <span class="settings-value" id="settingGasUrl" style="font-size:11px;max-width:400px;overflow:hidden;text-overflow:ellipsis"></span>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">마지막 데이터 수신</span>
+      <span class="settings-value" id="settingLastFetch">–</span>
+    </div>
+    <div style="margin-top:12px">
+      <input class="form-input" id="inputGasUrl" placeholder="GAS 웹앱 URL을 여기에 붙여넣기..." style="margin-bottom:8px">
+      <button class="btn-primary" onclick="saveGasUrl()">저장 및 데이터 불러오기</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-title">계좌 목록</div>
+    <div id="accountList"></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- ── 종목 추가/수정 모달 ────────────────────────────── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">종목 추가</div>
+    <div class="form-group">
+      <label class="form-label">계좌 선택</label>
+      <select class="form-select" id="formAccount"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">종목코드 (티커)</label>
+        <input class="form-input" id="formTicker" placeholder="005930 / AAPL" oninput="autoFillName()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">시장</label>
+        <select class="form-select" id="formMarket">
+          <option value="KR">🇰🇷 한국 (KR)</option>
+          <option value="US">🇺🇸 미국 (US)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">종목명</label>
+      <input class="form-input" id="formName" placeholder="자동입력 또는 직접 입력">
+    </div>
+    <div class="form-group">
+      <label class="form-label">섹터</label>
+      <select class="form-select" id="formSector">
+        <option>반도체</option><option>IT</option><option>바이오</option>
+        <option>자동차</option><option>2차전지</option><option>금융</option>
+        <option>에너지</option><option>소재</option><option>현금성</option>
+        <option>ETF</option><option>해외ETF</option><option>로봇</option>
+        <option>전력기기</option><option>기타</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">보유 수량</label>
+        <input class="form-input" id="formQuantity" type="number" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">평균 매수가</label>
+        <input class="form-input" id="formAvgPrice" type="number" placeholder="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-primary" onclick="submitHolding()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ★ 여기에 GAS URL을 붙여넣으세요 ★
+// GAS 배포 후 받은 URL을 아래 빈 문자열에 입력
+// ============================================================
+let GAS_URL = localStorage.getItem('GAS_URL') || '';
+
+// ============================================================
+// 전역 상태
+// ============================================================
+let state = {
+  holdings: [],
+  accounts: [],
+  config: {},
+  activeTab: 'overview',
+  activeOwner: 'all',
+  editingId: null,
+  charts: {},
+};
+
+// ============================================================
+// 초기화
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('settingGasUrl').textContent = GAS_URL || '미설정';
+  document.getElementById('inputGasUrl').value = GAS_URL;
+
+  if (!GAS_URL) {
+    document.getElementById('setupBanner').style.display = 'block';
+    document.getElementById('tableContainer').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2)">상단 안내에 따라 GAS URL을 먼저 설정하세요</div>';
+    return;
+  }
+  loadData();
+});
+
+// ============================================================
+// 데이터 로드
+// ============================================================
+async function loadData() {
+  showLoading();
+  try {
+    const res  = await fetch(GAS_URL + '?action=portfolio');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    state.holdings = data.holdings || [];
+    state.accounts = data.accounts || [];
+    state.config   = data.config   || {};
+
+    document.getElementById('lastUpdated').textContent =
+      '갱신: ' + new Date().toLocaleTimeString('ko-KR');
+    document.getElementById('settingLastFetch').textContent =
+      new Date().toLocaleString('ko-KR');
+
+    hideError();
+    renderAll();
+  } catch (err) {
+    showError('데이터 로드 실패: ' + err.message + ' (GAS URL 확인 필요)');
+    console.error(err);
+  }
+}
+
+function showLoading() {
+  document.getElementById('tableContainer').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span>불러오는 중...</span></div>';
+}
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('errorBanner').style.display = 'none';
+}
+
+// ============================================================
+// 전체 렌더링
+// ============================================================
+function renderAll() {
+  updateSummaryCards();
+  renderOwnerFilter();
+  renderTable();
+  renderByAccount();
+  renderCharts();
+  renderAccountList();
+}
+
+// ── 요약 카드 ────────────────────────────────────────────────
+function updateSummaryCards() {
+  const h = state.holdings;
+  const totalEval   = h.reduce((s, x) => s + (x.eval_amount || 0), 0);
+  const totalCost   = h.reduce((s, x) => s + (x.cost_amount || 0), 0);
+  const totalProfit = totalEval - totalCost;
+  const totalPct    = totalCost > 0 ? (totalProfit / totalCost * 100) : 0;
+
+  const fmt = n => n.toLocaleString('ko-KR') + '원';
+
+  document.getElementById('totalEval').textContent     = fmt(totalEval);
+  document.getElementById('totalCost').textContent     = '매수금액 ' + fmt(totalCost);
+  document.getElementById('totalProfit').textContent   = (totalProfit >= 0 ? '+' : '') + fmt(totalProfit);
+  document.getElementById('totalProfit').className     = 'card-value ' + (totalProfit >= 0 ? 'pos' : 'neg');
+  document.getElementById('totalProfitPct').textContent = '수익률 ' + totalPct.toFixed(1) + '%';
+  document.getElementById('totalCount').textContent    = h.length + '종목';
+  document.getElementById('accountCount').textContent  = state.accounts.length + '개 계좌';
+  document.getElementById('exchangeRate').textContent  = (state.config.USD_KRW || '–') + '원';
+  document.getElementById('rateUpdated').textContent   = state.config.rate_updated || '';
+  document.getElementById('headerSub').textContent     = fmt(totalEval);
+}
+
+// ── 소유자 필터 칩 ──────────────────────────────────────────
+function renderOwnerFilter() {
+  const owners = ['all', ...new Set(state.holdings.map(h => h.owner).filter(Boolean))];
+  const el = document.getElementById('ownerFilter');
+  el.innerHTML = owners.map(o =>
+    `<div class="chip ${o === state.activeOwner ? 'active' : ''}"
+          onclick="setOwnerFilter('${o}')">${o === 'all' ? '전체' : o}</div>`
+  ).join('');
+}
+
+function setOwnerFilter(owner) {
+  state.activeOwner = owner;
+  renderOwnerFilter();
+  renderTable();
+}
+
+// ── 종목 테이블 ─────────────────────────────────────────────
+function renderTable() {
+  let rows = state.holdings;
+  if (state.activeOwner !== 'all') rows = rows.filter(h => h.owner === state.activeOwner);
+
+  const sort = document.getElementById('sortSelect')?.value || 'profit_pct_desc';
+  rows = sortHoldings(rows, sort);
+
+  if (rows.length === 0) {
+    document.getElementById('tableContainer').innerHTML =
+      '<div style="padding:40px;text-align:center;color:var(--text2)">보유 종목이 없습니다. 종목을 추가하세요.</div>';
+    return;
+  }
+
+  const totalEval = rows.reduce((s, x) => s + (x.eval_amount || 0), 0);
+
+  let html = `<table>
+    <thead><tr>
+      <th>종목명</th><th>계좌</th>
+      <th>수량</th><th>평단가</th><th>현재가</th>
+      <th>매수금액</th><th>평가금액</th>
+      <th>평가손익</th><th>수익률</th><th>비중</th><th></th>
+    </tr></thead><tbody>`;
+
+  let lastGroupKey = null;
+
+  rows.forEach(h => {
+    // 계좌별/섹터별 정렬시 그룹 헤더
+    if (sort === 'account' || sort === 'sector') {
+      const gkey = sort === 'account'
+        ? `${h.owner} · ${h.broker} ${h.account_type}`
+        : h.sector;
+      if (gkey !== lastGroupKey) {
+        html += `<tr class="account-group-row"><td colspan="11">${gkey}</td></tr>`;
+        lastGroupKey = gkey;
+      }
+    }
+
+    const pct   = h.profit_pct || 0;
+    const color = pct >= 0 ? 'var(--green)' : 'var(--red)';
+    const sign  = pct >= 0 ? '+' : '';
+    const weight = totalEval > 0 ? ((h.eval_amount / totalEval) * 100).toFixed(1) : '0.0';
+
+    const marketBadge = h.market === 'US'
+      ? '<span class="badge badge-us">US</span>'
+      : '<span class="badge badge-kr">KR</span>';
+
+    const acctBadge = h.account_type === 'ISA'
+      ? '<span class="badge badge-isa">ISA</span>'
+      : h.account_type === 'IRP'
+      ? '<span class="badge badge-irp">IRP</span>'
+      : '';
+
+    const priceDisplay = h.market === 'US'
+      ? `$${(h.current_price || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`
+      : (h.current_price || 0).toLocaleString('ko-KR') + '원';
+
+    const avgDisplay = h.market === 'US'
+      ? `$${(h.avg_price || 0).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0})}`
+      : (h.avg_price || 0).toLocaleString('ko-KR') + '원';
+
+    html += `<tr>
+      <td><strong>${h.name || h.ticker}</strong> ${marketBadge}<br>
+          <small style="color:var(--text2)">${h.ticker} · ${h.sector || ''}</small></td>
+      <td>${h.broker || ''} ${acctBadge}<br>
+          <small style="color:var(--text2)">${h.account_type || ''} · ${h.owner || ''}</small></td>
+      <td>${(h.quantity || 0).toLocaleString()}</td>
+      <td>${avgDisplay}</td>
+      <td>${priceDisplay}</td>
+      <td>${(h.cost_amount || 0).toLocaleString('ko-KR')}원</td>
+      <td>${(h.eval_amount || 0).toLocaleString('ko-KR')}원</td>
+      <td style="color:${color}">${sign}${(h.profit_amount || 0).toLocaleString('ko-KR')}원</td>
+      <td style="color:${color};font-weight:700">${sign}${pct}%</td>
+      <td style="color:var(--text2)">${weight}%</td>
+      <td>
+        <button class="btn-icon" onclick="editHolding('${h.id}')" title="수정">✏️</button>
+        <button class="btn-icon" onclick="deleteHolding('${h.id}')" title="삭제">🗑️</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tableContainer').innerHTML = html;
+}
+
+function sortHoldings(rows, sort) {
+  return [...rows].sort((a, b) => {
+    switch (sort) {
+      case 'profit_pct_desc': return (b.profit_pct || 0) - (a.profit_pct || 0);
+      case 'profit_pct_asc':  return (a.profit_pct || 0) - (b.profit_pct || 0);
+      case 'eval_desc':       return (b.eval_amount || 0) - (a.eval_amount || 0);
+      case 'account':         return `${a.owner}${a.broker}${a.account_type}`.localeCompare(`${b.owner}${b.broker}${b.account_type}`);
+      case 'sector':          return (a.sector || '').localeCompare(b.sector || '');
+      default: return 0;
+    }
+  });
+}
+
+// ── 계좌별 패널 ─────────────────────────────────────────────
+function renderByAccount() {
+  const accounts = state.accounts;
+  let html = '';
+
+  accounts.forEach(acc => {
+    const accHoldings = state.holdings.filter(h => String(h.account_id) === String(acc.account_id));
+    if (accHoldings.length === 0) return;
+
+    const totalEval   = accHoldings.reduce((s, x) => s + (x.eval_amount || 0), 0);
+    const totalCost   = accHoldings.reduce((s, x) => s + (x.cost_amount || 0), 0);
+    const totalProfit = totalEval - totalCost;
+    const totalPct    = totalCost > 0 ? (totalProfit / totalCost * 100).toFixed(1) : '0.0';
+    const color       = totalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+
+    html += `
+    <div class="table-wrap" style="margin-bottom:16px">
+      <div class="table-header">
+        <div>
+          <span class="table-title">${acc.owner} · ${acc.broker} ${acc.account_type}</span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:13px">
+          <span>평가금액 <strong>${totalEval.toLocaleString('ko-KR')}원</strong></span>
+          <span style="color:${color}">손익 <strong>${totalProfit >= 0 ? '+' : ''}${totalProfit.toLocaleString('ko-KR')}원 (${totalProfit >= 0 ? '+' : ''}${totalPct}%)</strong></span>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>종목명</th><th>시장</th>
+          <th>수량</th><th>평단가</th><th>현재가</th>
+          <th>매수금액</th><th>평가금액</th><th>손익</th><th>수익률</th>
+        </tr></thead>
+        <tbody>`;
+
+    accHoldings.forEach(h => {
+      const pct   = h.profit_pct || 0;
+      const color2 = pct >= 0 ? 'var(--green)' : 'var(--red)';
+      const sign  = pct >= 0 ? '+' : '';
+
+      html += `<tr>
+        <td><strong>${h.name || h.ticker}</strong><br>
+            <small style="color:var(--text2)">${h.ticker} · ${h.sector}</small></td>
+        <td><span class="badge badge-${h.market === 'US' ? 'us' : 'kr'}">${h.market}</span></td>
+        <td>${(h.quantity || 0).toLocaleString()}</td>
+        <td>${(h.avg_price || 0).toLocaleString()}${h.market === 'US' ? '$' : '원'}</td>
+        <td>${(h.current_price || 0).toLocaleString()}${h.market === 'US' ? '$' : '원'}</td>
+        <td>${(h.cost_amount || 0).toLocaleString('ko-KR')}원</td>
+        <td>${(h.eval_amount || 0).toLocaleString('ko-KR')}원</td>
+        <td style="color:${color2}">${sign}${(h.profit_amount || 0).toLocaleString('ko-KR')}원</td>
+        <td style="color:${color2};font-weight:700">${sign}${pct}%</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+  });
+
+  document.getElementById('byAccountContainer').innerHTML = html || '<div style="padding:40px;text-align:center;color:var(--text2)">데이터 없음</div>';
+}
+
+// ── 차트 ────────────────────────────────────────────────────
+const CHART_COLORS = [
+  '#58a6ff','#3fb950','#f85149','#d29922','#bc8cff',
+  '#79c0ff','#56d364','#ff7b72','#e3b341','#d2a8ff',
+  '#39d353','#ffa657','#ff6e6e','#6e7681','#8b949e',
+];
+
+function renderCharts() {
+  renderPieChart('chartSector', groupBy('sector'));
+  renderPieChart('chartAccount', groupByAccount());
+  renderPieChart('chartMarket', groupBy('market'));
+  renderPieChart('chartOwner', groupBy('owner'));
+}
+
+function groupBy(key) {
+  const map = {};
+  state.holdings.forEach(h => {
+    const k = h[key] || '기타';
+    map[k] = (map[k] || 0) + (h.eval_amount || 0);
+  });
+  return map;
+}
+
+function groupByAccount() {
+  const map = {};
+  state.holdings.forEach(h => {
+    const k = `${h.owner}·${h.broker} ${h.account_type}`;
+    map[k] = (map[k] || 0) + (h.eval_amount || 0);
+  });
+  return map;
+}
+
+function renderPieChart(canvasId, dataMap) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  // 기존 차트 파괴
+  if (state.charts[canvasId]) {
+    state.charts[canvasId].destroy();
+  }
+
+  const labels = Object.keys(dataMap);
+  const values = Object.values(dataMap);
+  const total  = values.reduce((s, v) => s + v, 0);
+
+  state.charts[canvasId] = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: CHART_COLORS.slice(0, labels.length),
+        borderColor: '#161b22',
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: '#8b949e',
+            font: { size: 11 },
+            generateLabels(chart) {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((label, i) => ({
+                text: `${label} (${((ds.data[i] / total) * 100).toFixed(1)}%)`,
+                fillStyle: ds.backgroundColor[i],
+                hidden: false,
+                index: i,
+              }));
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.raw;
+              const pct = ((v / total) * 100).toFixed(1);
+              return ` ${v.toLocaleString('ko-KR')}원 (${pct}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── 계좌 목록 (설정 패널) ────────────────────────────────────
+function renderAccountList() {
+  const el = document.getElementById('accountList');
+  if (!el) return;
+  el.innerHTML = state.accounts.map(a =>
+    `<div class="settings-row">
+      <span class="settings-label">${a.owner} · ${a.broker}</span>
+      <span class="settings-value">${a.account_type}</span>
+    </div>`
+  ).join('') || '<div style="color:var(--text2);padding:10px 0">계좌 없음</div>';
+}
+
+// ============================================================
+// 탭 전환
+// ============================================================
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    const tabs = ['overview','byAccount','charts','settings'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.panel').forEach(el => {
+    el.classList.toggle('active', el.id === 'panel-' + tab);
+  });
+
+  if (tab === 'charts') renderCharts();
+}
+
+// ============================================================
+// 모달 (종목 추가/수정)
+// ============================================================
+function openModal(holdingId = null) {
+  state.editingId = holdingId;
+  document.getElementById('modalTitle').textContent = holdingId ? '종목 수정' : '종목 추가';
+
+  // 계좌 드롭다운 채우기
+  const sel = document.getElementById('formAccount');
+  sel.innerHTML = state.accounts.map(a =>
+    `<option value="${a.account_id}">${a.owner} · ${a.broker} ${a.account_type}</option>`
+  ).join('');
+
+  // 수정 모드면 기존 값 채우기
+  if (holdingId) {
+    const h = state.holdings.find(x => String(x.id) === String(holdingId));
+    if (h) {
+      sel.value = h.account_id;
+      document.getElementById('formTicker').value   = h.ticker;
+      document.getElementById('formMarket').value   = h.market;
+      document.getElementById('formName').value     = h.name;
+      document.getElementById('formSector').value   = h.sector;
+      document.getElementById('formQuantity').value = h.quantity;
+      document.getElementById('formAvgPrice').value = h.avg_price;
+    }
+  } else {
+    ['formTicker','formName','formQuantity','formAvgPrice'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  state.editingId = null;
+}
+
+function editHolding(id)   { openModal(id); }
+
+// ticker 입력 시 ticker_master에서 이름 자동완성
+function autoFillName() {
+  const ticker = document.getElementById('formTicker').value.toUpperCase();
+  // 로컬 캐시에서 찾기 (간단 구현)
+  const found = state.holdings.find(h => h.ticker === ticker);
+  if (found) {
+    document.getElementById('formName').value   = found.name;
+    document.getElementById('formSector').value = found.sector;
+    document.getElementById('formMarket').value = found.market;
+  }
+}
+
+async function submitHolding() {
+  const data = {
+    action:     state.editingId ? 'update_holding' : 'add_holding',
+    id:         state.editingId,
+    account_id: document.getElementById('formAccount').value,
+    ticker:     document.getElementById('formTicker').value.toUpperCase(),
+    market:     document.getElementById('formMarket').value,
+    name:       document.getElementById('formName').value,
+    sector:     document.getElementById('formSector').value,
+    quantity:   parseFloat(document.getElementById('formQuantity').value),
+    avg_price:  parseFloat(document.getElementById('formAvgPrice').value),
+  };
+
+  if (!data.ticker || !data.quantity || !data.avg_price) {
+    alert('종목코드, 수량, 평단가는 필수입니다.');
+    return;
+  }
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+
+    closeModal();
+    await loadData();
+  } catch (err) {
+    alert('저장 실패: ' + err.message);
+  }
+}
+
+async function deleteHolding(id) {
+  if (!confirm('이 종목을 삭제하시겠습니까?')) return;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_holding', id }),
+    });
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    await loadData();
+  } catch (err) {
+    alert('삭제 실패: ' + err.message);
+  }
+}
+
+// ============================================================
+// GAS URL 저장
+// ============================================================
+function saveGasUrl() {
+  const url = document.getElementById('inputGasUrl').value.trim();
+  if (!url) { alert('URL을 입력하세요'); return; }
+  GAS_URL = url;
+  localStorage.setItem('GAS_URL', url);
+  document.getElementById('settingGasUrl').textContent = url;
+  document.getElementById('setupBanner').style.display = 'none';
+  loadData();
+}
+
+// 모달 외부 클릭 시 닫기
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+</script>
+</body>
+</html>
