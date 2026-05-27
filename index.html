@@ -198,11 +198,13 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 28px;
-  width: 440px;
+  width: 480px;
   max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modal-title { font-size:16px; font-weight:700; margin-bottom:20px; }
-.form-group  { margin-bottom:16px; }
+.form-group  { margin-bottom:16px; position:relative; }
 .form-label  { font-size:12px; color:var(--text2); margin-bottom:6px; display:block; }
 .form-input, .form-select {
   width:100%;
@@ -239,6 +241,53 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
   cursor:pointer;
   font-size:14px;
 }
+
+/* ── 자동완성 드롭다운 ────────────────────────────────────── */
+.autocomplete-wrap { position:relative; }
+.autocomplete-list {
+  display:none;
+  position:absolute;
+  top: calc(100% + 2px);
+  left:0; right:0;
+  background: var(--bg3);
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+  z-index: 300;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.autocomplete-list.open { display:block; }
+.autocomplete-item {
+  padding: 10px 14px;
+  cursor:pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+  font-size:13px;
+}
+.autocomplete-item:last-child { border-bottom:none; }
+.autocomplete-item:hover, .autocomplete-item.selected { background: var(--bg2); }
+.ac-name   { font-weight:600; color:var(--text); }
+.ac-ticker { color:var(--blue); font-size:12px; margin-left:8px; font-family:monospace; }
+.ac-market { font-size:11px; color:var(--text2); margin-top:2px; }
+.ac-searching { padding:12px 14px; color:var(--text2); font-size:13px; }
+
+/* ── 시장 선택 토글 버튼 ──────────────────────────────────── */
+.market-toggle { display:flex; gap:8px; }
+.market-btn {
+  flex:1;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  cursor:pointer;
+  font-size:13px;
+  text-align:center;
+  transition: all .2s;
+}
+.market-btn.active-kr { border-color:#58a6ff; background:#1f2d3d; color:#58a6ff; font-weight:700; }
+.market-btn.active-us { border-color:#f85149; background:#2d1f1f; color:#f85149; font-weight:700; }
 
 /* ── 설정 패널 ────────────────────────────────────────────── */
 .settings-section { margin-bottom:28px; }
@@ -485,27 +534,47 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-title" id="modalTitle">종목 추가</div>
+
+    <!-- 시장 선택 (맨 위로 이동 — 검색 범위 결정) -->
+    <div class="form-group">
+      <label class="form-label">시장</label>
+      <div class="market-toggle">
+        <button class="market-btn active-kr" id="btnKR" onclick="setMarket('KR')">🇰🇷 한국 (KR)</button>
+        <button class="market-btn" id="btnUS"  onclick="setMarket('US')">🇺🇸 미국 (US)</button>
+      </div>
+      <input type="hidden" id="formMarket" value="KR">
+    </div>
+
+    <!-- 종목 검색 자동완성 -->
+    <div class="form-group">
+      <label class="form-label" id="searchLabel">종목명 또는 코드로 검색</label>
+      <div class="autocomplete-wrap">
+        <input class="form-input" id="formSearch"
+               placeholder="삼성전자 또는 005930..."
+               autocomplete="off"
+               oninput="onSearchInput()"
+               onkeydown="onSearchKeydown(event)">
+        <div class="autocomplete-list" id="acList"></div>
+      </div>
+    </div>
+
+    <!-- 선택된 종목 표시 & 직접 입력 -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">종목코드 (티커)</label>
+        <input class="form-input" id="formTicker" placeholder="자동입력 또는 직접입력">
+      </div>
+      <div class="form-group">
+        <label class="form-label">종목명</label>
+        <input class="form-input" id="formName" placeholder="자동입력 또는 직접입력">
+      </div>
+    </div>
+
     <div class="form-group">
       <label class="form-label">계좌 선택</label>
       <select class="form-select" id="formAccount"></select>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">종목코드 (티커)</label>
-        <input class="form-input" id="formTicker" placeholder="005930 / AAPL" oninput="autoFillName()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">시장</label>
-        <select class="form-select" id="formMarket">
-          <option value="KR">🇰🇷 한국 (KR)</option>
-          <option value="US">🇺🇸 미국 (US)</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">종목명</label>
-      <input class="form-input" id="formName" placeholder="자동입력 또는 직접 입력">
-    </div>
+
     <div class="form-group">
       <label class="form-label">섹터</label>
       <select class="form-select" id="formSector">
@@ -516,16 +585,18 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
         <option>전력기기</option><option>기타</option>
       </select>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">보유 수량</label>
-        <input class="form-input" id="formQuantity" type="number" placeholder="0">
+        <input class="form-input" id="formQuantity" type="number" placeholder="0" min="0">
       </div>
       <div class="form-group">
-        <label class="form-label">평균 매수가</label>
-        <input class="form-input" id="formAvgPrice" type="number" placeholder="0">
+        <label class="form-label">평균 매수가 <span id="priceUnit" style="color:var(--text2)">(원)</span></label>
+        <input class="form-input" id="formAvgPrice" type="number" placeholder="0" min="0">
       </div>
     </div>
+
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">취소</button>
       <button class="btn-primary" onclick="submitHolding()">저장</button>
@@ -938,83 +1009,194 @@ function switchTab(tab) {
 // ============================================================
 // 모달 (종목 추가/수정)
 // ============================================================
+// ============================================================
+// 모달 (종목 추가/수정) + 자동완성
+// ============================================================
+
+// 자동완성 상태
+const ac = {
+  results:  [],
+  selected: -1,
+  timer:    null,
+};
+
+// 시장 선택 토글
+function setMarket(market) {
+  document.getElementById('formMarket').value = market;
+  document.getElementById('btnKR').className = 'market-btn' + (market === 'KR' ? ' active-kr' : '');
+  document.getElementById('btnUS').className = 'market-btn' + (market === 'US' ? ' active-us' : '');
+  document.getElementById('priceUnit').textContent = market === 'US' ? '($)' : '(원)';
+  document.getElementById('searchLabel').textContent =
+    market === 'KR' ? '종목명 또는 코드로 검색' : '종목명 또는 티커로 검색';
+  document.getElementById('formSearch').placeholder =
+    market === 'KR' ? '삼성전자 또는 005930...' : 'Apple 또는 AAPL...';
+  // 검색창 초기화
+  document.getElementById('formSearch').value = '';
+  document.getElementById('formTicker').value = '';
+  document.getElementById('formName').value   = '';
+  closeAcList();
+}
+
+// 검색 입력 핸들러 (300ms 디바운스)
+function onSearchInput() {
+  clearTimeout(ac.timer);
+  const q = document.getElementById('formSearch').value.trim();
+  if (!q) { closeAcList(); return; }
+  showAcSearching();
+  ac.timer = setTimeout(() => doSearch(q), 300);
+}
+
+function showAcSearching() {
+  const list = document.getElementById('acList');
+  list.innerHTML = '<div class="ac-searching">검색 중...</div>';
+  list.classList.add('open');
+}
+
+async function doSearch(q) {
+  try {
+    const res  = await fetch(`${GAS_URL}?action=search_ticker&q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    ac.results  = data || [];
+    ac.selected = -1;
+    renderAcList();
+  } catch(e) {
+    document.getElementById('acList').innerHTML =
+      '<div class="ac-searching" style="color:var(--red)">검색 실패 — 직접 입력하세요</div>';
+  }
+}
+
+function renderAcList() {
+  const list = document.getElementById('acList');
+  if (!ac.results.length) {
+    list.innerHTML = '<div class="ac-searching">결과 없음 — 직접 입력하세요</div>';
+    list.classList.add('open');
+    return;
+  }
+  list.innerHTML = ac.results.map((r, i) => `
+    <div class="autocomplete-item${i === ac.selected ? ' selected' : ''}"
+         onmousedown="selectAcItem(${i})">
+      <div>
+        <span class="ac-name">${r.name}</span>
+        <span class="ac-ticker">${r.ticker}</span>
+      </div>
+      <div class="ac-market">${r.exchange || r.market}</div>
+    </div>`
+  ).join('');
+  list.classList.add('open');
+}
+
+function selectAcItem(idx) {
+  const item = ac.results[idx];
+  if (!item) return;
+  document.getElementById('formTicker').value = item.ticker;
+  document.getElementById('formName').value   = item.name;
+  document.getElementById('formSearch').value = item.name + '  (' + item.ticker + ')';
+  closeAcList();
+}
+
+function closeAcList() {
+  document.getElementById('acList').classList.remove('open');
+  ac.results  = [];
+  ac.selected = -1;
+}
+
+// 키보드 내비게이션 (↑↓ Enter)
+function onSearchKeydown(e) {
+  const list = document.getElementById('acList');
+  if (!list.classList.contains('open')) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    ac.selected = Math.min(ac.selected + 1, ac.results.length - 1);
+    renderAcList();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    ac.selected = Math.max(ac.selected - 1, -1);
+    renderAcList();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (ac.selected >= 0) selectAcItem(ac.selected);
+    else closeAcList();
+  } else if (e.key === 'Escape') {
+    closeAcList();
+  }
+}
+
 function openModal(holdingId = null) {
   state.editingId = holdingId;
   document.getElementById('modalTitle').textContent = holdingId ? '종목 수정' : '종목 추가';
 
-  // 계좌 드롭다운 채우기
+  // 계좌 드롭다운
   const sel = document.getElementById('formAccount');
   sel.innerHTML = state.accounts.map(a =>
     `<option value="${a.account_id}">${a.owner} · ${a.broker} ${a.account_type}</option>`
   ).join('');
 
-  // 수정 모드면 기존 값 채우기
   if (holdingId) {
+    // 수정 모드 — 기존 값 채우기
     const h = state.holdings.find(x => String(x.id) === String(holdingId));
     if (h) {
       sel.value = h.account_id;
+      setMarket(h.market);
       document.getElementById('formTicker').value   = h.ticker;
-      document.getElementById('formMarket').value   = h.market;
       document.getElementById('formName').value     = h.name;
+      document.getElementById('formSearch').value   = h.name + '  (' + h.ticker + ')';
       document.getElementById('formSector').value   = h.sector;
       document.getElementById('formQuantity').value = h.quantity;
       document.getElementById('formAvgPrice').value = h.avg_price;
     }
   } else {
-    ['formTicker','formName','formQuantity','formAvgPrice'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
+    // 추가 모드 — 초기화
+    setMarket('KR');
+    document.getElementById('formSearch').value   = '';
+    document.getElementById('formTicker').value   = '';
+    document.getElementById('formName').value     = '';
+    document.getElementById('formQuantity').value = '';
+    document.getElementById('formAvgPrice').value = '';
+    document.getElementById('formSector').value   = '기타';
   }
 
   document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('formSearch').focus(), 100);
 }
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
+  closeAcList();
   state.editingId = null;
 }
 
-function editHolding(id)   { openModal(id); }
-
-// ticker 입력 시 ticker_master에서 이름 자동완성
-function autoFillName() {
-  const ticker = document.getElementById('formTicker').value.toUpperCase();
-  // 로컬 캐시에서 찾기 (간단 구현)
-  const found = state.holdings.find(h => h.ticker === ticker);
-  if (found) {
-    document.getElementById('formName').value   = found.name;
-    document.getElementById('formSector').value = found.sector;
-    document.getElementById('formMarket').value = found.market;
-  }
-}
+function editHolding(id) { openModal(id); }
 
 async function submitHolding() {
+  const ticker = document.getElementById('formTicker').value.trim().toUpperCase();
+  const name   = document.getElementById('formName').value.trim();
+  const qty    = parseFloat(document.getElementById('formQuantity').value);
+  const avg    = parseFloat(document.getElementById('formAvgPrice').value);
+
+  if (!ticker) { alert('종목코드(티커)를 입력하거나 검색해서 선택해주세요.'); return; }
+  if (!qty || !avg) { alert('수량과 평단가는 필수입니다.'); return; }
+
   const data = {
     action:     state.editingId ? 'update_holding' : 'add_holding',
     id:         state.editingId,
     account_id: document.getElementById('formAccount').value,
-    ticker:     document.getElementById('formTicker').value.toUpperCase(),
+    ticker,
     market:     document.getElementById('formMarket').value,
-    name:       document.getElementById('formName').value,
+    name:       name || ticker,
     sector:     document.getElementById('formSector').value,
-    quantity:   parseFloat(document.getElementById('formQuantity').value),
-    avg_price:  parseFloat(document.getElementById('formAvgPrice').value),
+    quantity:   qty,
+    avg_price:  avg,
   };
 
-  if (!data.ticker || !data.quantity || !data.avg_price) {
-    alert('종목코드, 수량, 평단가는 필수입니다.');
-    return;
-  }
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
+    const res    = await fetch(GAS_URL, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body:    JSON.stringify(data),
     });
     const result = await res.json();
     if (result.error) throw new Error(result.error);
-
     closeModal();
     await loadData();
   } catch (err) {
@@ -1026,9 +1208,9 @@ async function deleteHolding(id) {
   if (!confirm('이 종목을 삭제하시겠습니까?')) return;
   try {
     const res = await fetch(GAS_URL, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete_holding', id }),
+      body:    JSON.stringify({ action: 'delete_holding', id }),
     });
     const result = await res.json();
     if (result.error) throw new Error(result.error);
@@ -1054,6 +1236,11 @@ function saveGasUrl() {
 // 모달 외부 클릭 시 닫기
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
+});
+
+// 자동완성 목록 외부 클릭 시 닫기
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) closeAcList();
 });
 </script>
 </body>
