@@ -594,6 +594,35 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
       <div class="chart-wrap"><canvas id="chartOwner"></canvas></div>
     </div>
   </div>
+
+  <!-- bar 차트 섹션 (전체 너비) -->
+  <div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">
+
+    <!-- 섹터별 수익률 -->
+    <div class="chart-card" id="card-bar-sector" style="width:100%">
+      <div class="chart-title">섹터별 수익률 (%)</div>
+      <div style="position:relative;height:260px"><canvas id="chartBarSector"></canvas></div>
+    </div>
+
+    <!-- 종목별 수익률 Top20 -->
+    <div class="chart-card" id="card-bar-top20" style="width:100%">
+      <div class="chart-title">종목별 수익률 Top 20</div>
+      <div style="position:relative;height:320px"><canvas id="chartBarTop20"></canvas></div>
+    </div>
+
+    <!-- 계좌별 수익률 — 전체 선택 시만 표시 -->
+    <div class="chart-card" id="card-bar-account" style="width:100%">
+      <div class="chart-title">계좌별 수익률 (%)</div>
+      <div style="position:relative;height:260px"><canvas id="chartBarAccount"></canvas></div>
+    </div>
+
+    <!-- 소유자별 수익률 — 전체 선택 시만 표시 -->
+    <div class="chart-card" id="card-bar-owner" style="width:100%">
+      <div class="chart-title">소유자별 수익률 (%)</div>
+      <div style="position:relative;height:220px"><canvas id="chartBarOwner"></canvas></div>
+    </div>
+
+  </div>
 </div>
 
 <!-- ── 패널: 설정 ──────────────────────────────────────── -->
@@ -1152,9 +1181,13 @@ function getFilteredHoldings() {
 function renderCharts() {
   // 소유자별 비중 차트: 전체 선택 시만 표시
   const ownerCard = document.getElementById('card-owner');
-  if (ownerCard) {
-    ownerCard.style.display = selectedOwners.size === 0 ? '' : 'none';
-  }
+  if (ownerCard) ownerCard.style.display = selectedOwners.size === 0 ? '' : 'none';
+
+  // 계좌별/소유자별 수익률 bar: 전체 선택 시만 표시
+  const barAcctCard  = document.getElementById('card-bar-account');
+  const barOwnerCard = document.getElementById('card-bar-owner');
+  if (barAcctCard)  barAcctCard.style.display  = selectedAccounts.size === 0 ? '' : 'none';
+  if (barOwnerCard) barOwnerCard.style.display = selectedOwners.size === 0 ? '' : 'none';
 
   chartDataCache.sector  = groupBy('sector');
   chartDataCache.account = groupByAccount();
@@ -1167,6 +1200,119 @@ function renderCharts() {
   renderChart('market',  'chartMarket',  chartDataCache.market);
   renderChart('asset',   'chartAsset',   chartDataCache.asset);
   renderChart('owner',   'chartOwner',   chartDataCache.owner);
+
+  // bar 차트
+  renderBarChart('chartBarSector',  buildBarBySector());
+  renderBarChart('chartBarTop20',   buildBarTop20(),    { horizontal: true, top20: true });
+  renderBarChart('chartBarAccount', buildBarByAccount());
+  renderBarChart('chartBarOwner',   buildBarByOwner());
+}
+
+// ── bar 차트 데이터 빌더 ──────────────────────────────────────
+
+function buildBarBySector() {
+  const map = {};
+  getFilteredHoldings().forEach(h => {
+    if (!h.cost_amount) return;
+    const k = h.sector || '기타';
+    if (!map[k]) map[k] = { profit: 0, cost: 0 };
+    map[k].profit += h.profit_amount || 0;
+    map[k].cost   += h.cost_amount   || 0;
+  });
+  return Object.entries(map)
+    .map(([k, v]) => ({ label: k, pct: v.cost > 0 ? Math.round(v.profit / v.cost * 1000) / 10 : 0 }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
+function buildBarTop20() {
+  return getFilteredHoldings()
+    .filter(h => !h.is_cash && h.cost_amount > 0)
+    .map(h => ({ label: h.name || h.ticker, pct: h.profit_pct || 0 }))
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 20);
+}
+
+function buildBarByAccount() {
+  const map = {};
+  const labelMap = {};
+  getFilteredHoldings().forEach(h => {
+    const id = String(h.account_id);
+    const label = h.owner + '·' + h.broker + ' ' + h.account_type;
+    if (!map[id]) { map[id] = { profit: 0, cost: 0 }; labelMap[id] = label; }
+    map[id].profit += h.profit_amount || 0;
+    map[id].cost   += h.cost_amount   || 0;
+  });
+  return Object.entries(map)
+    .map(([id, v]) => ({ label: labelMap[id], pct: v.cost > 0 ? Math.round(v.profit / v.cost * 1000) / 10 : 0 }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
+function buildBarByOwner() {
+  const map = {};
+  getFilteredHoldings().forEach(h => {
+    const k = h.owner || '기타';
+    if (!map[k]) map[k] = { profit: 0, cost: 0 };
+    map[k].profit += h.profit_amount || 0;
+    map[k].cost   += h.cost_amount   || 0;
+  });
+  return Object.entries(map)
+    .map(([k, v]) => ({ label: k, pct: v.cost > 0 ? Math.round(v.profit / v.cost * 1000) / 10 : 0 }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
+// ── bar 차트 렌더러 ───────────────────────────────────────────
+function renderBarChart(canvasId, data, opts) {
+  opts = opts || {};
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (state.charts[canvasId]) { state.charts[canvasId].destroy(); }
+  if (!data || data.length === 0) return;
+
+  const labels = data.map(d => d.label);
+  const values = data.map(d => d.pct);
+  const colors = values.map(v => v >= 0 ? 'rgba(248,81,73,0.85)' : 'rgba(68,147,248,0.85)');
+  const borderColors = values.map(v => v >= 0 ? '#f85149' : '#4493f8');
+
+  state.charts[canvasId] = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: opts.horizontal ? 'y' : 'x',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw + '%'
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8b949e', font: { size: opts.horizontal ? 11 : 11 } },
+          grid:  { color: 'rgba(255,255,255,0.05)' },
+        },
+        y: {
+          ticks: {
+            color: '#8b949e',
+            font:  { size: opts.horizontal ? 11 : 11 },
+            callback: opts.horizontal ? undefined : v => v + '%'
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+        }
+      }
+    }
+  });
 }
 
 function groupBy(key) {
