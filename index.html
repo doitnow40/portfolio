@@ -487,10 +487,16 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
   </div>
 </div>
 
-<!-- ── 소유자 전역 필터 ──────────────────────────────────── -->
-<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-  <span style="color:var(--text2);font-size:12px;flex-shrink:0">소유자:</span>
-  <div id="globalOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+<!-- ── 전역 필터 (소유자 + 계좌) ────────────────────────── -->
+<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;flex-direction:column;gap:8px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:var(--text2);font-size:12px;width:40px;flex-shrink:0">소유자:</span>
+    <div id="globalOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="color:var(--text2);font-size:12px;width:40px;flex-shrink:0">계좌:</span>
+    <div id="globalAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
 </div>
 
 <!-- ── 탭 ───────────────────────────────────────────────── -->
@@ -535,11 +541,7 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 
 <!-- ── 패널: 차트 분석 ─────────────────────────────────── -->
 <div class="panel" id="panel-charts">
-  <!-- 차트 계좌 필터 -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-    <span style="color:var(--text2);font-size:13px;flex-shrink:0">계좌별:</span>
-    <div id="chartAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-  </div>
+
   <div class="chart-grid">
     <div class="chart-card" id="card-sector">
       <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -796,6 +798,7 @@ function hideError() {
 function renderAll() {
   updateSummaryCards();
   renderGlobalOwnerFilter();
+  renderGlobalAccountFilter();
   renderTable();
   renderByAccount();
   renderCharts();
@@ -853,7 +856,7 @@ function setGlobalOwner(owner, event) {
   // state.activeOwner 동기화 (기존 코드 호환)
   state.activeOwner = selectedOwners.size === 1 ? [...selectedOwners][0] : (selectedOwners.size === 0 ? 'all' : 'multi');
   renderGlobalOwnerFilter();
-  renderChartAccountFilter();
+  renderGlobalAccountFilter();
   renderAll();
 }
 
@@ -1114,7 +1117,7 @@ function renderChartAccountFilter() {
   container.innerHTML = html;
 }
 
-function setChartAccount(id, event) {
+function setGlobalAccount(id, event) {
   if (id === 'all') {
     selectedAccounts.clear();
   } else if (event && event.ctrlKey) {
@@ -1131,9 +1134,11 @@ function setChartAccount(id, event) {
       selectedAccounts.add(id);
     }
   }
-  renderChartAccountFilter();
-  renderCharts();
+  renderGlobalAccountFilter();
+  renderAll();
 }
+// 하위 호환
+function setChartAccount(id, event) { setGlobalAccount(id, event); }
 
 // 소유자 필터는 전역 필터로 통합 (setGlobalOwner 참고)
 
@@ -1146,7 +1151,6 @@ function getFilteredHoldings() {
 }
 
 function renderCharts() {
-  renderChartAccountFilter();
   // 소유자별 비중 차트: 전체 선택 시만 표시
   const ownerCard = document.getElementById('card-owner');
   if (ownerCard) {
