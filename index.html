@@ -571,6 +571,13 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
     <div class="settings-title">계좌 목록</div>
     <div id="accountList"></div>
   </div>
+  <div class="settings-section">
+    <div class="settings-title">차트 진단</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:12px">
+      차트 수치가 이상할 때 현재 데이터 상태를 확인합니다.
+    </div>
+    <button class="btn-primary" onclick="debugChartData()">차트 데이터 진단</button>
+  </div>
 </div>
 
 </main>
@@ -968,8 +975,10 @@ function renderCharts() {
 function groupBy(key) {
   const map = {};
   state.holdings.forEach(h => {
+    // eval_amount=0 (현재가 미조회) 종목 제외
+    if (!h.eval_amount || h.eval_amount === 0) return;
     const k = h[key] || '기타';
-    map[k] = (map[k] || 0) + (h.eval_amount || 0);
+    map[k] = (map[k] || 0) + h.eval_amount;
   });
   return map;
 }
@@ -977,10 +986,42 @@ function groupBy(key) {
 function groupByAccount() {
   const map = {};
   state.holdings.forEach(h => {
+    if (!h.eval_amount || h.eval_amount === 0) return;
     const k = h.owner + '·' + h.broker + ' ' + h.account_type;
-    map[k] = (map[k] || 0) + (h.eval_amount || 0);
+    map[k] = (map[k] || 0) + h.eval_amount;
   });
   return map;
+}
+
+// 차트 데이터 디버그 — 설정 탭에서 호출
+function debugChartData() {
+  const holdings = state.holdings;
+  const total    = holdings.reduce((s, h) => s + (h.eval_amount || 0), 0);
+  const zeroCnt  = holdings.filter(h => !h.eval_amount || h.eval_amount === 0).length;
+  const validCnt = holdings.length - zeroCnt;
+
+  // 시장별
+  const mktMap = {};
+  holdings.forEach(h => {
+    if (!h.eval_amount) return;
+    mktMap[h.market] = (mktMap[h.market] || 0) + h.eval_amount;
+  });
+
+  let msg = '=== 차트 데이터 진단 ===\n\n';
+  msg += '전체 종목: ' + holdings.length + '개\n';
+  msg += '현재가 있음: ' + validCnt + '개\n';
+  msg += '현재가 없음(제외): ' + zeroCnt + '개\n\n';
+  msg += '총 평가금액: ' + total.toLocaleString('ko-KR') + '원\n\n';
+  msg += '[시장별]\n';
+  Object.entries(mktMap).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+    msg += k + ': ' + v.toLocaleString('ko-KR') + '원 (' + (v/total*100).toFixed(1) + '%)\n';
+  });
+
+  msg += '\n[현재가 없는 종목]\n';
+  holdings.filter(h => !h.eval_amount || h.eval_amount === 0)
+    .forEach(h => { msg += h.ticker + ' (' + h.name + ')\n'; });
+
+  alert(msg);
 }
 
 // 뷰 전환 버튼 핸들러
@@ -1048,11 +1089,13 @@ function renderDonut(canvasId, canvas, dataMap) {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e6edf3',
-            font: { size: 12 },
-            boxWidth: 14,
-            boxHeight: 14,
-            padding: 10,
+            color: '#ffffff',
+            font: { size: 13, weight: '500' },
+            boxWidth: 16,
+            boxHeight: 16,
+            padding: 12,
+            useBorderRadius: true,
+            borderRadius: 3,
             generateLabels(chart) {
               const ds = chart.data.datasets[0];
               return chart.data.labels.map((label, i) => {
@@ -1061,6 +1104,7 @@ function renderDonut(canvasId, canvas, dataMap) {
                   text: label + '  ' + pct + '%',
                   fillStyle: ds.backgroundColor[i],
                   strokeStyle: ds.backgroundColor[i],
+                  fontColor: '#ffffff',
                   hidden: false,
                   index: i,
                 };
