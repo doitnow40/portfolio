@@ -373,6 +373,35 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 }
 .account-body.collapsed { max-height: 0; }
 
+/* ── 스크롤 버튼 ─────────────────────────────────────────── */
+#scrollTopBtn, #scrollBottomBtn {
+  position: fixed;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  transition: all .2s;
+  opacity: 0.75;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+#scrollTopBtn    { bottom: 62px; }
+#scrollBottomBtn { bottom: 18px; }
+#scrollTopBtn:hover, #scrollBottomBtn:hover {
+  background: var(--accent);
+  border-color: var(--blue);
+  color: #fff;
+  opacity: 1;
+}
+
 /* ── 에러 배너 ────────────────────────────────────────────── */
 .error-banner {
   background: #2d1a1a;
@@ -442,6 +471,10 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 </head>
 <body>
 <div class="app">
+
+<!-- ── 스크롤 버튼 ──────────────────────────────────────── -->
+<button id="scrollTopBtn"    onclick="window.scrollTo({top:0,behavior:'smooth'})"    title="맨 위로">▲</button>
+<button id="scrollBottomBtn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="맨 아래로">▼</button>
 
 <!-- ── 헤더 ──────────────────────────────────────────────── -->
 <header>
