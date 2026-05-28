@@ -1063,8 +1063,9 @@ function renderByAccount() {
           <span class="table-title">${acc.owner} · ${acc.broker} ${acc.account_type}</span>
           <span style="color:var(--text2);font-size:12px">${accHoldings.length}종목</span>
         </div>
-        <div style="display:flex;gap:16px;font-size:13px">
-          <span>평가금액 <strong>${totalEval.toLocaleString('ko-KR')}원</strong></span>
+        <div style="display:flex;gap:16px;font-size:13px;flex-wrap:wrap">
+          <span style="color:var(--text2)">매수 <strong style="color:var(--text)">${totalCost.toLocaleString('ko-KR')}원</strong></span>
+          <span>평가 <strong>${totalEval.toLocaleString('ko-KR')}원</strong></span>
           <span style="color:${color}">손익 <strong>${totalProfit >= 0 ? '+' : ''}${totalProfit.toLocaleString('ko-KR')}원 (${totalProfit >= 0 ? '+' : ''}${totalPct}%)</strong></span>
         </div>
       </div>
