@@ -524,6 +524,10 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 
 <!-- ── 패널: 계좌별 ────────────────────────────────────── -->
 <div class="panel" id="panel-byAccount">
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="btn-refresh" onclick="collapseAllAccounts(true)">▲ 전체 접기</button>
+    <button class="btn-refresh" onclick="collapseAllAccounts(false)">▼ 전체 펴기</button>
+  </div>
   <div id="byAccountContainer">
     <div class="loading"><div class="spinner"></div></div>
   </div>
@@ -944,6 +948,22 @@ function sortHoldings(rows, sort) {
 // ── 계좌별 패널 ─────────────────────────────────────────────
 // 접기/펴기 상태 유지
 const accountCollapseState = {};
+
+function collapseAllAccounts(collapse) {
+  // 현재 렌더링된 모든 계좌 body 찾기
+  document.querySelectorAll('[id^="acc-body-"]').forEach(function(body) {
+    const accId = body.id.replace('acc-body-', '');
+    accountCollapseState[accId] = collapse;
+    const btn = document.getElementById('acc-btn-' + accId);
+    if (collapse) {
+      body.classList.add('collapsed');
+      if (btn) btn.classList.add('collapsed');
+    } else {
+      body.classList.remove('collapsed');
+      if (btn) btn.classList.remove('collapsed');
+    }
+  });
+}
 
 function toggleAccount(accId) {
   accountCollapseState[accId] = !accountCollapseState[accId];
