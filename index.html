@@ -65,24 +65,24 @@ header {
 }
 .btn-refresh:hover { border-color:var(--blue); color:var(--blue); }
 
-main { padding: 24px; max-width: 1600px; margin: 0 auto; width:100%; }
+main { padding: 12px 16px; max-width: 1600px; margin: 0 auto; width:100%; }
 
 /* ── 요약 카드 ────────────────────────────────────────────── */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .card {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 10px 14px;
 }
-.card-label { font-size:12px; color:var(--text2); margin-bottom:8px; }
-.card-value { font-size:22px; font-weight:700; }
-.card-sub   { font-size:12px; color:var(--text2); margin-top:4px; }
+.card-label { font-size:11px; color:var(--text2); margin-bottom:3px; }
+.card-value { font-size:18px; font-weight:700; }
+.card-sub   { font-size:11px; color:var(--text2); margin-top:2px; }
 .pos { color: var(--green); }
 .neg { color: var(--red); }
 .neu { color: var(--text); }
@@ -90,13 +90,13 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; width:100%; }
 /* ── 탭 네비게이션 ────────────────────────────────────────── */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   overflow-x: auto;
 }
 .tab {
-  padding: 8px 16px;
+  padding: 6px 14px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   color: var(--text2);
@@ -155,23 +155,25 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; width:100%; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  margin-bottom: 0;
 }
 .table-header {
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding: 14px 20px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border);
+  cursor:pointer;
 }
-.table-title { font-size:14px; font-weight:600; }
+.table-title { font-size:13px; font-weight:600; }
 .table-actions { display:flex; gap:8px; }
 
 table { width:100%; border-collapse:collapse; }
 thead th {
   background: var(--bg3);
-  padding: 10px 14px;
+  padding: 5px 10px;
   text-align:right;
-  font-size:12px;
+  font-size:11px;
   color:var(--text2);
   font-weight:500;
   white-space:nowrap;
@@ -185,19 +187,19 @@ tbody tr {
 tbody tr:last-child { border-bottom:none; }
 tbody tr:hover { background: var(--bg3); }
 tbody td {
-  padding: 10px 14px;
+  padding: 5px 10px;
   text-align:right;
-  font-size:13px;
+  font-size:12px;
   white-space:nowrap;
 }
-tbody td:first-child { text-align:left; }
-tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
+tbody td:first-child { text-align:left; font-size:12px; }
+tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 
 .badge {
   display:inline-block;
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 20px;
-  font-size:11px;
+  font-size:10px;
   font-weight:600;
 }
 .badge-kr  { background:#1f3a5f; color:#58a6ff; }
@@ -384,9 +386,9 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 /* ── 계좌 필터 칩 ─────────────────────────────────────────── */
 .filter-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
 .chip {
-  padding: 4px 12px;
+  padding: 2px 10px;
   border-radius:20px;
-  font-size:12px;
+  font-size:11px;
   cursor:pointer;
   border: 1px solid var(--border);
   background: var(--bg3);
@@ -488,7 +490,7 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 </div>
 
 <!-- ── 전역 필터 (소유자 + 계좌) ────────────────────────── -->
-<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;flex-direction:column;gap:8px">
+<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 16px;display:flex;flex-direction:column;gap:4px">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:var(--text2);font-size:12px;width:40px;flex-shrink:0">소유자:</span>
     <div id="globalOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
@@ -1056,9 +1058,9 @@ function renderByAccount() {
     const isCollapsed = accountCollapseState[accId] ? 'collapsed' : '';
 
     html += `
-    <div class="table-wrap" style="margin-bottom:16px">
+    <div class="table-wrap" style="margin-bottom:6px">
       <div class="table-header" style="cursor:pointer" onclick="toggleAccount('${accId}')">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px">
           <button class="account-toggle-btn ${isCollapsed}" id="acc-btn-${accId}">▼</button>
           <span class="table-title">${acc.owner} · ${acc.broker} ${acc.account_type}</span>
           <span style="color:var(--text2);font-size:12px">${accHoldings.length}종목</span>
