@@ -1270,8 +1270,44 @@ function renderBarChart(canvasId, data, opts) {
 
   const labels = data.map(d => d.label);
   const values = data.map(d => d.pct);
-  const colors = values.map(v => v >= 0 ? 'rgba(248,81,73,0.85)' : 'rgba(68,147,248,0.85)');
-  const borderColors = values.map(v => v >= 0 ? '#f85149' : '#4493f8');
+  const colors      = values.map(v => v >= 0 ? 'rgba(248,81,73,0.82)' : 'rgba(68,147,248,0.82)');
+  const borderColors= values.map(v => v >= 0 ? '#f85149' : '#4493f8');
+  const isHoriz     = !!opts.horizontal;
+
+  // 데이터 레이블 플러그인 (Chart.js 내장 datalabels 없으므로 afterDraw로 직접 그리기)
+  const datalabelPlugin = {
+    id: 'barDatalabel_' + canvasId,
+    afterDatasetsDraw(chart) {
+      const ctx2  = chart.ctx;
+      const ds    = chart.data.datasets[0];
+      const meta  = chart.getDatasetMeta(0);
+      ctx2.save();
+      ctx2.font = 'bold 11px Arial';
+      ctx2.textBaseline = 'middle';
+
+      meta.data.forEach(function(bar, i) {
+        const val   = ds.data[i];
+        const label = (val >= 0 ? '+' : '') + val + '%';
+        const color = val >= 0 ? '#ff9a96' : '#80bfff';
+        ctx2.fillStyle = color;
+
+        if (isHoriz) {
+          // 가로 bar: 값을 막대 끝 오른쪽(양수) 또는 왼쪽(음수)에 표시
+          const x = val >= 0 ? bar.x + 5 : bar.x - 5;
+          const y = bar.y;
+          ctx2.textAlign = val >= 0 ? 'left' : 'right';
+          ctx2.fillText(label, x, y);
+        } else {
+          // 세로 bar: 값을 막대 위쪽에 표시
+          const x = bar.x;
+          const y = val >= 0 ? bar.y - 6 : bar.y + 14;
+          ctx2.textAlign = 'center';
+          ctx2.fillText(label, x, y);
+        }
+      });
+      ctx2.restore();
+    }
+  };
 
   state.charts[canvasId] = new Chart(canvas, {
     type: 'bar',
@@ -1286,9 +1322,15 @@ function renderBarChart(canvasId, data, opts) {
       }]
     },
     options: {
-      indexAxis: opts.horizontal ? 'y' : 'x',
+      indexAxis: isHoriz ? 'y' : 'x',
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        // 레이블 공간 확보
+        padding: isHoriz
+          ? { right: 52, left: 8 }
+          : { top: 24, bottom: 4 }
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1299,19 +1341,24 @@ function renderBarChart(canvasId, data, opts) {
       },
       scales: {
         x: {
-          ticks: { color: '#8b949e', font: { size: opts.horizontal ? 11 : 11 } },
-          grid:  { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#8b949e',
+            font: { size: 11 },
+            callback: isHoriz ? v => v + '%' : undefined,
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' },
         },
         y: {
           ticks: {
             color: '#8b949e',
-            font:  { size: opts.horizontal ? 11 : 11 },
-            callback: opts.horizontal ? undefined : v => v + '%'
+            font: { size: 11 },
+            callback: isHoriz ? undefined : v => v + '%',
           },
           grid: { color: 'rgba(255,255,255,0.05)' },
         }
       }
-    }
+    },
+    plugins: [datalabelPlugin]
   });
 }
 
