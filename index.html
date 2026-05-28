@@ -804,8 +804,7 @@ function renderAll() {
 
 // ── 요약 카드 ────────────────────────────────────────────────
 function updateSummaryCards() {
-  const owner = state.activeOwner || 'all';
-  const h = owner === 'all' ? state.holdings : state.holdings.filter(x => x.owner === owner);
+  const h = getFilteredHoldings();
   const totalEval   = h.reduce((s, x) => s + (x.eval_amount || 0), 0);
   const totalCost   = h.reduce((s, x) => s + (x.cost_amount || 0), 0);
   const totalProfit = totalEval - totalCost;
@@ -827,10 +826,32 @@ function updateSummaryCards() {
 
 // ── 소유자 필터 칩 ──────────────────────────────────────────
 function renderOwnerFilter() { renderGlobalOwnerFilter(); } 
-function setGlobalOwner(owner) {
-  state.activeOwner = owner;
-  chartOwnerId      = owner;   // 차트 필터도 동기화
-  chartAccountId    = 'all';   // 계좌 필터 초기화
+function setGlobalOwner(owner, event) {
+  if (owner === 'all') {
+    // 전체 클릭 → 모두 해제
+    selectedOwners.clear();
+    selectedAccounts.clear();
+  } else if (event && event.ctrlKey) {
+    // Ctrl+클릭 → 다중 선택/해제
+    if (selectedOwners.has(owner)) {
+      selectedOwners.delete(owner);
+    } else {
+      selectedOwners.add(owner);
+    }
+    // 선택된 소유자에 속하지 않는 계좌 필터 해제
+    selectedAccounts.clear();
+  } else {
+    // 일반 클릭 → 단독 선택 (토글)
+    if (selectedOwners.size === 1 && selectedOwners.has(owner)) {
+      selectedOwners.clear(); // 다시 클릭하면 전체로
+    } else {
+      selectedOwners.clear();
+      selectedOwners.add(owner);
+    }
+    selectedAccounts.clear();
+  }
+  // state.activeOwner 동기화 (기존 코드 호환)
+  state.activeOwner = selectedOwners.size === 1 ? [...selectedOwners][0] : (selectedOwners.size === 0 ? 'all' : 'multi');
   renderGlobalOwnerFilter();
   renderChartAccountFilter();
   renderAll();
@@ -841,16 +862,18 @@ function renderGlobalOwnerFilter() {
   const el = document.getElementById('globalOwnerFilter');
   if (!el) return;
   const owners = [...new Set((state.holdings || []).map(h => h.owner).filter(Boolean))];
-  const cur = state.activeOwner || 'all';
-  el.innerHTML = ['all', ...owners].map(o =>
-    `<div class="chip ${cur === o ? 'active' : ''}" onclick="setGlobalOwner('${o}')">${o === 'all' ? '전체' : o}</div>`
-  ).join('');
+  const allSelected = selectedOwners.size === 0;
+  let html = `<div class="chip ${allSelected ? 'active' : ''}" onclick="setGlobalOwner('all', event)">전체</div>`;
+  owners.forEach(o => {
+    const active = selectedOwners.has(o) ? 'active' : '';
+    html += `<div class="chip ${active}" onclick="setGlobalOwner('${o}', event)">${o}</div>`;
+  });
+  el.innerHTML = html;
 }
 
 // ── 종목 테이블 ─────────────────────────────────────────────
 function renderTable() {
-  let rows = state.holdings;
-  if (state.activeOwner !== 'all') rows = rows.filter(h => h.owner === state.activeOwner);
+  let rows = getFilteredHoldings();
 
   const sort = document.getElementById('sortSelect')?.value || 'profit_pct_desc';
   rows = sortHoldings(rows, sort);
@@ -983,16 +1006,14 @@ function renderByAccount() {
   const accounts = state.accounts;
   let html = '';
 
-  const globalOwner = state.activeOwner || 'all';
-  const filteredAccounts = accounts.filter(acc =>
-    globalOwner === 'all' || acc.owner === globalOwner
-  );
+  const filteredAccounts = accounts.filter(acc => {
+    if (selectedOwners.size > 0 && !selectedOwners.has(acc.owner)) return false;
+    if (selectedAccounts.size > 0 && !selectedAccounts.has(String(acc.account_id))) return false;
+    return true;
+  });
   filteredAccounts.forEach(acc => {
-    const accId      = String(acc.account_id);
-    const accHoldings = state.holdings.filter(h =>
-      String(h.account_id) === accId &&
-      (globalOwner === 'all' || h.owner === globalOwner)
-    );
+    const accId       = String(acc.account_id);
+    const accHoldings = getFilteredHoldings().filter(h => String(h.account_id) === accId);
     if (accHoldings.length === 0) return;
 
     const totalEval   = accHoldings.reduce((s, x) => s + (x.eval_amount || 0), 0);
@@ -1068,8 +1089,10 @@ const chartViewState = {
 // 차트 데이터 캐시
 const chartDataCache = {};
 
-// 차트 계좌 필터 상태
-let chartAccountId = 'all';
+// 필터 상태 (Set 기반 다중선택)
+// 빈 Set = 전체, 값 있으면 해당 항목만
+let selectedOwners   = new Set(); // 빈 Set = 전체
+let selectedAccounts = new Set(); // 빈 Set = 전체
 
 // 차트 계좌 필터 버튼 렌더링
 function renderChartAccountFilter() {
@@ -1078,33 +1101,47 @@ function renderChartAccountFilter() {
 
   // 계좌 목록 수집
   const accounts = (state.accounts || []).filter(function(a) {
-    // 소유자 필터 적용 — 해당 소유자 계좌만 표시
-    return (state.activeOwner || 'all') === 'all' || a.owner === state.activeOwner;
+    return selectedOwners.size === 0 || selectedOwners.has(a.owner);
   });
-  let html = '<button class="chip ' + (chartAccountId === 'all' ? 'active' : '') + '" onclick="setChartAccount(&apos;all&apos;)">전체</button>';
+  const allAcctSelected = selectedAccounts.size === 0;
+  let html = '<button class="chip ' + (allAcctSelected ? 'active' : '') + '" onclick="setChartAccount(&apos;all&apos;, event)">전체</button>';
   accounts.forEach(a => {
     const id    = String(a.account_id);
     const label = (a.broker || '') + ' ' + (a.account_type || '');
-    const active = chartAccountId === id ? 'active' : '';
-    html += '<button class="chip ' + active + '" onclick="setChartAccount(&apos;' + id + '&apos;)">' + label + '</button>';
+    const active = selectedAccounts.has(id) ? 'active' : '';
+    html += '<button class="chip ' + active + '" onclick="setChartAccount(&apos;' + id + '&apos;, event)">' + label + '</button>';
   });
   container.innerHTML = html;
 }
 
-function setChartAccount(id) {
-  chartAccountId = id;
+function setChartAccount(id, event) {
+  if (id === 'all') {
+    selectedAccounts.clear();
+  } else if (event && event.ctrlKey) {
+    if (selectedAccounts.has(id)) {
+      selectedAccounts.delete(id);
+    } else {
+      selectedAccounts.add(id);
+    }
+  } else {
+    if (selectedAccounts.size === 1 && selectedAccounts.has(id)) {
+      selectedAccounts.clear();
+    } else {
+      selectedAccounts.clear();
+      selectedAccounts.add(id);
+    }
+  }
   renderChartAccountFilter();
   renderCharts();
 }
 
 // 소유자 필터는 전역 필터로 통합 (setGlobalOwner 참고)
 
-// 필터 적용된 holdings 반환 (전역 소유자 → 계좌 순서로 적용)
+// 필터 적용된 holdings 반환 (소유자 → 계좌 순서 다중선택 지원)
 function getFilteredHoldings() {
   let result = state.holdings;
-  const owner = state.activeOwner || 'all';
-  if (owner          !== 'all') result = result.filter(h => h.owner === owner);
-  if (chartAccountId !== 'all') result = result.filter(h => String(h.account_id) === chartAccountId);
+  if (selectedOwners.size > 0)   result = result.filter(h => selectedOwners.has(h.owner));
+  if (selectedAccounts.size > 0) result = result.filter(h => selectedAccounts.has(String(h.account_id)));
   return result;
 }
 
@@ -1113,7 +1150,7 @@ function renderCharts() {
   // 소유자별 비중 차트: 전체 선택 시만 표시
   const ownerCard = document.getElementById('card-owner');
   if (ownerCard) {
-    ownerCard.style.display = (state.activeOwner === 'all' || !state.activeOwner) ? '' : 'none';
+    ownerCard.style.display = selectedOwners.size === 0 ? '' : 'none';
   }
 
   chartDataCache.sector  = groupBy('sector');
