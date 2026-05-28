@@ -1097,25 +1097,24 @@ const chartDataCache = {};
 let selectedOwners   = new Set(); // 빈 Set = 전체
 let selectedAccounts = new Set(); // 빈 Set = 전체
 
-// 차트 계좌 필터 버튼 렌더링
-function renderChartAccountFilter() {
-  const container = document.getElementById('chartAccountFilter');
+// 전역 계좌 필터 렌더링
+function renderGlobalAccountFilter() {
+  const container = document.getElementById('globalAccountFilter');
   if (!container) return;
-
-  // 계좌 목록 수집
   const accounts = (state.accounts || []).filter(function(a) {
     return selectedOwners.size === 0 || selectedOwners.has(a.owner);
   });
   const allAcctSelected = selectedAccounts.size === 0;
-  let html = '<button class="chip ' + (allAcctSelected ? 'active' : '') + '" onclick="setChartAccount(&apos;all&apos;, event)">전체</button>';
+  let html = '<button class="chip ' + (allAcctSelected ? 'active' : '') + '" onclick="setGlobalAccount(&apos;all&apos;, event)">전체</button>';
   accounts.forEach(a => {
     const id    = String(a.account_id);
     const label = (a.broker || '') + ' ' + (a.account_type || '');
     const active = selectedAccounts.has(id) ? 'active' : '';
-    html += '<button class="chip ' + active + '" onclick="setChartAccount(&apos;' + id + '&apos;, event)">' + label + '</button>';
+    html += '<button class="chip ' + active + '" onclick="setGlobalAccount(&apos;' + id + '&apos;, event)">' + label + '</button>';
   });
   container.innerHTML = html;
 }
+function renderChartAccountFilter() { renderGlobalAccountFilter(); }
 
 function setGlobalAccount(id, event) {
   if (id === 'all') {
