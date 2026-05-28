@@ -998,12 +998,12 @@ function renderChartAccountFilter() {
 
   // 계좌 목록 수집
   const accounts = state.accounts || [];
-  let html = '<button class="chip ' + (chartAccountId === 'all' ? 'active' : '') + '" onclick="setChartAccount('all')">전체</button>';
+  let html = '<button class="chip ' + (chartAccountId === 'all' ? 'active' : '') + '" onclick="setChartAccount(&apos;all&apos;)">전체</button>';
   accounts.forEach(a => {
     const id    = String(a.account_id);
     const label = (a.owner || '') + ' · ' + (a.broker || '') + ' ' + (a.account_type || '');
     const active = chartAccountId === id ? 'active' : '';
-    html += '<button class="chip ' + active + '" onclick="setChartAccount('' + id + '')">' + label + '</button>';
+    html += '<button class="chip ' + active + '" onclick="setChartAccount(&apos;' + id + '&apos;)">' + label + '</button>';
   });
   container.innerHTML = html;
 }
