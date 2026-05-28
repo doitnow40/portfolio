@@ -506,6 +506,11 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 
 <!-- ── 패널: 차트 분석 ─────────────────────────────────── -->
 <div class="panel" id="panel-charts">
+  <!-- 계좌 필터 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <span style="color:var(--text2);font-size:13px">계좌 필터:</span>
+    <div id="chartAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
   <div class="chart-grid">
     <div class="chart-card" id="card-sector">
       <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -983,11 +988,45 @@ const chartViewState = {
 // 차트 데이터 캐시
 const chartDataCache = {};
 
+// 현재 선택된 차트 계좌 필터 ('all' 또는 account_id)
+let chartAccountId = 'all';
+
+// 차트 계좌 필터 버튼 렌더링
+function renderChartAccountFilter() {
+  const container = document.getElementById('chartAccountFilter');
+  if (!container) return;
+
+  // 계좌 목록 수집
+  const accounts = state.accounts || [];
+  let html = '<button class="chip ' + (chartAccountId === 'all' ? 'active' : '') + '" onclick="setChartAccount('all')">전체</button>';
+  accounts.forEach(a => {
+    const id    = String(a.account_id);
+    const label = (a.owner || '') + ' · ' + (a.broker || '') + ' ' + (a.account_type || '');
+    const active = chartAccountId === id ? 'active' : '';
+    html += '<button class="chip ' + active + '" onclick="setChartAccount('' + id + '')">' + label + '</button>';
+  });
+  container.innerHTML = html;
+}
+
+function setChartAccount(id) {
+  chartAccountId = id;
+  renderChartAccountFilter();
+  renderCharts();
+}
+
+// 필터 적용된 holdings 반환
+function getFilteredHoldings() {
+  if (chartAccountId === 'all') return state.holdings;
+  return state.holdings.filter(h => String(h.account_id) === chartAccountId);
+}
+
 function renderCharts() {
+  renderChartAccountFilter();
+
   chartDataCache.sector  = groupBy('sector');
   chartDataCache.account = groupByAccount();
   chartDataCache.market  = groupBy('market');
-  chartDataCache.asset   = groupBy('asset_region');  // ★ 자산소재지별
+  chartDataCache.asset   = groupBy('asset_region');
   chartDataCache.owner   = groupBy('owner');
 
   renderChart('sector',  'chartSector',  chartDataCache.sector);
@@ -999,8 +1038,7 @@ function renderCharts() {
 
 function groupBy(key) {
   const map = {};
-  state.holdings.forEach(h => {
-    // eval_amount=0 (현재가 미조회) 종목 제외
+  getFilteredHoldings().forEach(h => {
     if (!h.eval_amount || h.eval_amount === 0) return;
     const k = h[key] || '기타';
     map[k] = (map[k] || 0) + h.eval_amount;
@@ -1010,7 +1048,7 @@ function groupBy(key) {
 
 function groupByAccount() {
   const map = {};
-  state.holdings.forEach(h => {
+  getFilteredHoldings().forEach(h => {
     if (!h.eval_amount || h.eval_amount === 0) return;
     const k = h.owner + '·' + h.broker + ' ' + h.account_type;
     map[k] = (map[k] || 0) + h.eval_amount;
@@ -1020,7 +1058,7 @@ function groupByAccount() {
 
 // 차트 데이터 디버그 — 설정 탭에서 호출
 function debugChartData() {
-  const holdings = state.holdings;
+  const holdings = getFilteredHoldings();
   const total    = holdings.reduce((s, h) => s + (h.eval_amount || 0), 0);
   const zeroCnt  = holdings.filter(h => !h.eval_amount || h.eval_amount === 0).length;
   const validCnt = holdings.length - zeroCnt;
