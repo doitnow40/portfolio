@@ -191,6 +191,8 @@ tbody td {
   text-align:right;
   font-size:12px;
   white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 tbody td:first-child { text-align:left; font-size:12px; }
 tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
@@ -920,7 +922,20 @@ function renderTable() {
 
   const totalEval = rows.reduce((s, x) => s + (x.eval_amount || 0), 0);
 
-  let html = `<table>
+  let html = `<table style="table-layout:fixed;width:100%">
+    <colgroup>
+      <col style="width:20%">
+      <col style="width:14%">
+      <col style="width:5%">
+      <col style="width:9%">
+      <col style="width:9%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:6%">
+      <col style="width:5%">
+      <col style="width:2%">
+    </colgroup>
     <thead><tr>
       <th>종목명</th><th>계좌</th>
       <th>수량</th><th>평단가</th><th>현재가</th>
@@ -1072,7 +1087,18 @@ function renderByAccount() {
         </div>
       </div>
       <div class="account-body ${isCollapsed}" id="acc-body-${accId}">
-      <table>
+      <table style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:22%">
+          <col style="width:5%">
+          <col style="width:6%">
+          <col style="width:10%">
+          <col style="width:10%">
+          <col style="width:12%">
+          <col style="width:12%">
+          <col style="width:12%">
+          <col style="width:8%">
+        </colgroup>
         <thead><tr>
           <th>종목명</th><th>시장</th>
           <th>수량</th><th>평단가</th><th>현재가</th>
