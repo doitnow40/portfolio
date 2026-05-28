@@ -487,6 +487,12 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
   </div>
 </div>
 
+<!-- ── 소유자 전역 필터 ──────────────────────────────────── -->
+<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+  <span style="color:var(--text2);font-size:12px;flex-shrink:0">소유자:</span>
+  <div id="globalOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+</div>
+
 <!-- ── 탭 ───────────────────────────────────────────────── -->
 <div class="tabs">
   <div class="tab active" onclick="switchTab('overview')">전체 현황</div>
@@ -497,7 +503,6 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 
 <!-- ── 패널: 전체 현황 ─────────────────────────────────── -->
 <div class="panel active" id="panel-overview">
-  <div class="filter-chips" id="ownerFilter"></div>
   <div class="table-wrap">
     <div class="table-header">
       <span class="table-title">보유 종목 전체</span>
@@ -526,16 +531,10 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
 
 <!-- ── 패널: 차트 분석 ─────────────────────────────────── -->
 <div class="panel" id="panel-charts">
-  <!-- 차트 필터 -->
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="color:var(--text2);font-size:13px;width:52px;flex-shrink:0">소유자별:</span>
-      <div id="chartOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="color:var(--text2);font-size:13px;width:52px;flex-shrink:0">계좌별:</span>
-      <div id="chartAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-    </div>
+  <!-- 차트 계좌 필터 -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <span style="color:var(--text2);font-size:13px;flex-shrink:0">계좌별:</span>
+    <div id="chartAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
   </div>
   <div class="chart-grid">
     <div class="chart-card" id="card-sector">
@@ -792,7 +791,7 @@ function hideError() {
 // ============================================================
 function renderAll() {
   updateSummaryCards();
-  renderOwnerFilter();
+  renderGlobalOwnerFilter();
   renderTable();
   renderByAccount();
   renderCharts();
@@ -801,7 +800,8 @@ function renderAll() {
 
 // ── 요약 카드 ────────────────────────────────────────────────
 function updateSummaryCards() {
-  const h = state.holdings;
+  const owner = state.activeOwner || 'all';
+  const h = owner === 'all' ? state.holdings : state.holdings.filter(x => x.owner === owner);
   const totalEval   = h.reduce((s, x) => s + (x.eval_amount || 0), 0);
   const totalCost   = h.reduce((s, x) => s + (x.cost_amount || 0), 0);
   const totalProfit = totalEval - totalCost;
@@ -822,19 +822,25 @@ function updateSummaryCards() {
 }
 
 // ── 소유자 필터 칩 ──────────────────────────────────────────
-function renderOwnerFilter() {
-  const owners = ['all', ...new Set(state.holdings.map(h => h.owner).filter(Boolean))];
-  const el = document.getElementById('ownerFilter');
-  el.innerHTML = owners.map(o =>
-    `<div class="chip ${o === state.activeOwner ? 'active' : ''}"
-          onclick="setOwnerFilter('${o}')">${o === 'all' ? '전체' : o}</div>`
-  ).join('');
+function renderOwnerFilter() { renderGlobalOwnerFilter(); } 
+function setGlobalOwner(owner) {
+  state.activeOwner = owner;
+  chartOwnerId      = owner;   // 차트 필터도 동기화
+  chartAccountId    = 'all';   // 계좌 필터 초기화
+  renderGlobalOwnerFilter();
+  renderChartAccountFilter();
+  renderAll();
 }
 
-function setOwnerFilter(owner) {
-  state.activeOwner = owner;
-  renderOwnerFilter();
-  renderTable();
+// 전역 소유자 필터 렌더링
+function renderGlobalOwnerFilter() {
+  const el = document.getElementById('globalOwnerFilter');
+  if (!el) return;
+  const owners = [...new Set((state.holdings || []).map(h => h.owner).filter(Boolean))];
+  const cur = state.activeOwner || 'all';
+  el.innerHTML = ['all', ...owners].map(o =>
+    `<div class="chip ${cur === o ? 'active' : ''}" onclick="setGlobalOwner('${o}')">${o === 'all' ? '전체' : o}</div>`
+  ).join('');
 }
 
 // ── 종목 테이블 ─────────────────────────────────────────────
@@ -957,9 +963,16 @@ function renderByAccount() {
   const accounts = state.accounts;
   let html = '';
 
-  accounts.forEach(acc => {
+  const globalOwner = state.activeOwner || 'all';
+  const filteredAccounts = accounts.filter(acc =>
+    globalOwner === 'all' || acc.owner === globalOwner
+  );
+  filteredAccounts.forEach(acc => {
     const accId      = String(acc.account_id);
-    const accHoldings = state.holdings.filter(h => String(h.account_id) === accId);
+    const accHoldings = state.holdings.filter(h =>
+      String(h.account_id) === accId &&
+      (globalOwner === 'all' || h.owner === globalOwner)
+    );
     if (accHoldings.length === 0) return;
 
     const totalEval   = accHoldings.reduce((s, x) => s + (x.eval_amount || 0), 0);
@@ -1035,9 +1048,8 @@ const chartViewState = {
 // 차트 데이터 캐시
 const chartDataCache = {};
 
-// 차트 필터 상태
+// 차트 계좌 필터 상태
 let chartAccountId = 'all';
-let chartOwnerId   = 'all';
 
 // 차트 계좌 필터 버튼 렌더링
 function renderChartAccountFilter() {
@@ -1047,7 +1059,7 @@ function renderChartAccountFilter() {
   // 계좌 목록 수집
   const accounts = (state.accounts || []).filter(function(a) {
     // 소유자 필터 적용 — 해당 소유자 계좌만 표시
-    return chartOwnerId === 'all' || a.owner === chartOwnerId;
+    return (state.activeOwner || 'all') === 'all' || a.owner === state.activeOwner;
   });
   let html = '<button class="chip ' + (chartAccountId === 'all' ? 'active' : '') + '" onclick="setChartAccount(&apos;all&apos;)">전체</button>';
   accounts.forEach(a => {
@@ -1065,38 +1077,24 @@ function setChartAccount(id) {
   renderCharts();
 }
 
-// 소유자 필터 렌더링
-function renderChartOwnerFilter() {
-  const container = document.getElementById('chartOwnerFilter');
-  if (!container) return;
-  const owners = [...new Set((state.holdings || []).map(h => h.owner).filter(Boolean))];
-  let html = '<button class="chip ' + (chartOwnerId === 'all' ? 'active' : '') + '" onclick="setChartOwner(&apos;all&apos;)">전체</button>';
-  owners.forEach(owner => {
-    const active = chartOwnerId === owner ? 'active' : '';
-    html += '<button class="chip ' + active + '" onclick="setChartOwner(&apos;' + owner + '&apos;)">' + owner + '</button>';
-  });
-  container.innerHTML = html;
-}
+// 소유자 필터는 전역 필터로 통합 (setGlobalOwner 참고)
 
-function setChartOwner(owner) {
-  chartOwnerId   = owner;
-  chartAccountId = 'all'; // 소유자 변경 시 계좌 필터 초기화
-  renderChartOwnerFilter();
-  renderChartAccountFilter();
-  renderCharts();
-}
-
-// 필터 적용된 holdings 반환 (소유자 → 계좌 순서로 적용)
+// 필터 적용된 holdings 반환 (전역 소유자 → 계좌 순서로 적용)
 function getFilteredHoldings() {
   let result = state.holdings;
-  if (chartOwnerId   !== 'all') result = result.filter(h => h.owner === chartOwnerId);
+  const owner = state.activeOwner || 'all';
+  if (owner          !== 'all') result = result.filter(h => h.owner === owner);
   if (chartAccountId !== 'all') result = result.filter(h => String(h.account_id) === chartAccountId);
   return result;
 }
 
 function renderCharts() {
-  renderChartOwnerFilter();
   renderChartAccountFilter();
+  // 소유자별 비중 차트: 전체 선택 시만 표시
+  const ownerCard = document.getElementById('card-owner');
+  if (ownerCard) {
+    ownerCard.style.display = (state.activeOwner === 'all' || !state.activeOwner) ? '' : 'none';
+  }
 
   chartDataCache.sector  = groupBy('sector');
   chartDataCache.account = groupByAccount();
