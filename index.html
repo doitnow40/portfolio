@@ -529,13 +529,23 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
     </div>
     <div class="chart-card" id="card-market">
       <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>국내 / 해외 비중</span>
+        <span>거래통화별 비중 (market)</span>
         <div class="chart-view-toggle">
           <button class="chart-view-btn active" onclick="switchChartView('market','donut',this)">도넛</button>
           <button class="chart-view-btn"        onclick="switchChartView('market','treemap',this)">맵</button>
         </div>
       </div>
       <div class="chart-wrap"><canvas id="chartMarket"></canvas></div>
+    </div>
+    <div class="chart-card" id="card-asset">
+      <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>자산소재지별 비중 (asset_region)</span>
+        <div class="chart-view-toggle">
+          <button class="chart-view-btn active" onclick="switchChartView('asset','donut',this)">도넛</button>
+          <button class="chart-view-btn"        onclick="switchChartView('asset','treemap',this)">맵</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartAsset"></canvas></div>
     </div>
     <div class="chart-card" id="card-owner">
       <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -588,14 +598,26 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:12px; }
   <div class="modal">
     <div class="modal-title" id="modalTitle">종목 추가</div>
 
-    <!-- 시장 선택 (맨 위로 이동 — 검색 범위 결정) -->
+    <!-- 거래통화 선택 -->
     <div class="form-group">
-      <label class="form-label">시장</label>
+      <label class="form-label">거래통화 (market)</label>
       <div class="market-toggle">
-        <button class="market-btn active-kr" id="btnKR" onclick="setMarket('KR')">🇰🇷 한국 (KR)</button>
-        <button class="market-btn" id="btnUS"  onclick="setMarket('US')">🇺🇸 미국 (US)</button>
+        <button class="market-btn active-kr" id="btnKR" onclick="setMarket('KR')">🇰🇷 원화 (KR)</button>
+        <button class="market-btn" id="btnUS"  onclick="setMarket('US')">🇺🇸 달러 (US)</button>
       </div>
       <input type="hidden" id="formMarket" value="KR">
+    </div>
+
+    <!-- 자산소재지 선택 -->
+    <div class="form-group">
+      <label class="form-label">자산소재지 (asset_region)
+        <span style="color:var(--text2);font-size:11px;margin-left:6px">한국상장 미국ETF → 원화/US 선택</span>
+      </label>
+      <div class="market-toggle">
+        <button class="market-btn active-kr" id="btnAssetKR" onclick="setAssetRegion('KR')">🇰🇷 국내자산 (KR)</button>
+        <button class="market-btn" id="btnAssetUS"  onclick="setAssetRegion('US')">🇺🇸 해외자산 (US)</button>
+      </div>
+      <input type="hidden" id="formAssetRegion" value="KR">
     </div>
 
     <!-- 종목 검색 자동완성 -->
@@ -954,6 +976,7 @@ const chartViewState = {
   sector:  'donut',
   account: 'donut',
   market:  'donut',
+  asset:   'donut',
   owner:   'donut',
 };
 
@@ -964,11 +987,13 @@ function renderCharts() {
   chartDataCache.sector  = groupBy('sector');
   chartDataCache.account = groupByAccount();
   chartDataCache.market  = groupBy('market');
+  chartDataCache.asset   = groupBy('asset_region');  // ★ 자산소재지별
   chartDataCache.owner   = groupBy('owner');
 
   renderChart('sector',  'chartSector',  chartDataCache.sector);
   renderChart('account', 'chartAccount', chartDataCache.account);
   renderChart('market',  'chartMarket',  chartDataCache.market);
+  renderChart('asset',   'chartAsset',   chartDataCache.asset);
   renderChart('owner',   'chartOwner',   chartDataCache.owner);
 }
 
@@ -1000,11 +1025,14 @@ function debugChartData() {
   const zeroCnt  = holdings.filter(h => !h.eval_amount || h.eval_amount === 0).length;
   const validCnt = holdings.length - zeroCnt;
 
-  // 시장별
+  // 거래통화별
   const mktMap = {};
+  const assetMap = {};
   holdings.forEach(h => {
     if (!h.eval_amount) return;
     mktMap[h.market] = (mktMap[h.market] || 0) + h.eval_amount;
+    const ar = h.asset_region || h.market;
+    assetMap[ar] = (assetMap[ar] || 0) + h.eval_amount;
   });
 
   let msg = '=== 차트 데이터 진단 ===\n\n';
@@ -1012,8 +1040,12 @@ function debugChartData() {
   msg += '현재가 있음: ' + validCnt + '개\n';
   msg += '현재가 없음(제외): ' + zeroCnt + '개\n\n';
   msg += '총 평가금액: ' + total.toLocaleString('ko-KR') + '원\n\n';
-  msg += '[시장별]\n';
+  msg += '[거래통화별 (market)]\n';
   Object.entries(mktMap).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+    msg += k + ': ' + v.toLocaleString('ko-KR') + '원 (' + (v/total*100).toFixed(1) + '%)\n';
+  });
+  msg += '\n[자산소재지별 (asset_region)]\n';
+  Object.entries(assetMap).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
     msg += k + ': ' + v.toLocaleString('ko-KR') + '원 (' + (v/total*100).toFixed(1) + '%)\n';
   });
 
@@ -1032,7 +1064,9 @@ function switchChartView(chartKey, viewType, btn) {
   btn.classList.add('active');
 
   chartViewState[chartKey] = viewType;
-  const canvasId = 'chart' + chartKey.charAt(0).toUpperCase() + chartKey.slice(1);
+  // asset → chartAsset (특수 매핑)
+  const canvasIdMap = { sector:'chartSector', account:'chartAccount', market:'chartMarket', asset:'chartAsset', owner:'chartOwner' };
+  const canvasId = canvasIdMap[chartKey] || ('chart' + chartKey.charAt(0).toUpperCase() + chartKey.slice(1));
   renderChart(chartKey, canvasId, chartDataCache[chartKey] || {});
 }
 
@@ -1231,7 +1265,7 @@ const ac = {
   timer:    null,
 };
 
-// 시장 선택 토글
+// 거래통화 선택 토글
 function setMarket(market) {
   document.getElementById('formMarket').value = market;
   document.getElementById('btnKR').className = 'market-btn' + (market === 'KR' ? ' active-kr' : '');
@@ -1241,11 +1275,20 @@ function setMarket(market) {
     market === 'KR' ? '종목명 또는 코드로 검색' : '종목명 또는 티커로 검색';
   document.getElementById('formSearch').placeholder =
     market === 'KR' ? '삼성전자 또는 005930...' : 'Apple 또는 AAPL...';
+  // 거래통화 변경 시 자산소재지도 같이 변경 (단, 수동 변경 가능)
+  setAssetRegion(market);
   // 검색창 초기화
   document.getElementById('formSearch').value = '';
   document.getElementById('formTicker').value = '';
   document.getElementById('formName').value   = '';
   closeAcList();
+}
+
+// 자산소재지 선택 토글
+function setAssetRegion(region) {
+  document.getElementById('formAssetRegion').value = region;
+  document.getElementById('btnAssetKR').className = 'market-btn' + (region === 'KR' ? ' active-kr' : '');
+  document.getElementById('btnAssetUS').className = 'market-btn' + (region === 'US' ? ' active-us' : '');
 }
 
 // 검색 입력 핸들러 (300ms 디바운스)
@@ -1349,6 +1392,7 @@ function openModal(holdingId = null) {
     if (h) {
       sel.value = h.account_id;
       setMarket(h.market);
+      setAssetRegion(h.asset_region || h.market);
       document.getElementById('formTicker').value   = h.ticker;
       document.getElementById('formName').value     = h.name;
       document.getElementById('formSearch').value   = h.name + '  (' + h.ticker + ')';
@@ -1393,8 +1437,9 @@ async function submitHolding() {
     id:         state.editingId,
     account_id: document.getElementById('formAccount').value,
     ticker,
-    market:     document.getElementById('formMarket').value,
-    name:       name || ticker,
+    market:       document.getElementById('formMarket').value,
+    asset_region: document.getElementById('formAssetRegion').value,
+    name:         name || ticker,
     sector:     document.getElementById('formSector').value,
     quantity:   qty,
     avg_price:  avg,
