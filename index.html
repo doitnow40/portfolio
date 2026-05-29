@@ -39,14 +39,20 @@ body {
 header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  height: 48px;
   position: sticky;
   top: 0;
   z-index: 100;
+}
+.header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 16px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .logo { font-size:18px; font-weight:700; color:var(--blue); letter-spacing:-0.5px; }
 .logo span { color: var(--text2); font-weight:400; font-size:13px; margin-left:8px; }
@@ -376,27 +382,27 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 /* ── 스크롤 버튼 ─────────────────────────────────────────── */
 #scrollTopBtn, #scrollBottomBtn {
   position: fixed;
-  right: 20px;
-  width: 36px;
-  height: 36px;
+  right: max(20px, calc((100vw - 1600px) / 2));
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text2);
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
   transition: all .2s;
-  opacity: 0.75;
+  opacity: 0.8;
   box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
-#scrollTopBtn    { bottom: 62px; }
-#scrollBottomBtn { bottom: 18px; }
+#scrollTopBtn    { bottom: 56px; }
+#scrollBottomBtn { bottom: 16px; }
 #scrollTopBtn:hover, #scrollBottomBtn:hover {
-  background: var(--accent);
+  background: var(--blue);
   border-color: var(--blue);
   color: #fff;
   opacity: 1;
@@ -478,11 +484,13 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 
 <!-- ── 헤더 ──────────────────────────────────────────────── -->
 <header>
-  <div class="logo">📈 포트폴리오 <span id="headerSub">로딩중...</span></div>
-  <div class="header-right">
-    <span class="last-updated" id="lastUpdated">–</span>
-    <button class="btn-refresh" onclick="loadData()">⟳ 새로고침</button>
-    <button class="btn-refresh" onclick="openModal()">+ 종목 추가</button>
+  <div class="header-inner">
+    <div class="logo">📈 포트폴리오 <span id="headerSub">로딩중...</span></div>
+    <div class="header-right">
+      <span class="last-updated" id="lastUpdated">–</span>
+      <button class="btn-refresh" onclick="loadData()">⟳ 새로고침</button>
+      <button class="btn-refresh" onclick="openModal()">+ 종목 추가</button>
+    </div>
   </div>
 </header>
 
@@ -525,7 +533,8 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 </div>
 
 <!-- ── 전역 필터 (소유자 + 계좌) ────────────────────────── -->
-<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 16px;display:flex;flex-direction:column;gap:4px">
+<div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:4px 0">
+  <div style="max-width:1600px;margin:0 auto;width:100%;padding:0 16px;display:flex;flex-direction:column;gap:4px">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:var(--text2);font-size:12px;width:40px;flex-shrink:0">소유자:</span>
     <div id="globalOwnerFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
@@ -533,6 +542,7 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="color:var(--text2);font-size:12px;width:40px;flex-shrink:0">계좌:</span>
     <div id="globalAccountFilter" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
   </div>
 </div>
 
