@@ -380,27 +380,37 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 .account-body.collapsed { max-height: 0; }
 
 /* ── 스크롤 버튼 ─────────────────────────────────────────── */
-#scrollTopBtn, #scrollBottomBtn {
+/* 스크롤 버튼 감싸는 컨테이너 — main 우측 바깥에 고정 */
+#scrollBtnGroup {
   position: fixed;
-  right: max(20px, calc((100vw - 1600px) / 2));
-  width: 32px;
-  height: 32px;
+  /* main(max-width:1600px)의 우측 경계 바깥 8px */
+  left: calc(50% + 800px + 8px);
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 999;
+}
+/* 화면이 1600px 이하이면 우측 8px로 fallback */
+@media (max-width: 1640px) {
+  #scrollBtnGroup { left: auto; right: 8px; }
+}
+#scrollTopBtn, #scrollBottomBtn {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text2);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
   transition: all .2s;
-  opacity: 0.8;
+  opacity: 0.85;
   box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
-#scrollTopBtn    { bottom: 56px; }
-#scrollBottomBtn { bottom: 16px; }
 #scrollTopBtn:hover, #scrollBottomBtn:hover {
   background: var(--blue);
   border-color: var(--blue);
@@ -479,8 +489,10 @@ tbody td:nth-child(2) { text-align:left; color:var(--text2); font-size:11px; }
 <div class="app">
 
 <!-- ── 스크롤 버튼 ──────────────────────────────────────── -->
-<button id="scrollTopBtn"    onclick="window.scrollTo({top:0,behavior:'smooth'})"    title="맨 위로">▲</button>
-<button id="scrollBottomBtn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="맨 아래로">▼</button>
+<div id="scrollBtnGroup">
+  <button id="scrollTopBtn"    onclick="window.scrollTo({top:0,behavior:'smooth'})"    title="맨 위로">▲</button>
+  <button id="scrollBottomBtn" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" title="맨 아래로">▼</button>
+</div>
 
 <!-- ── 헤더 ──────────────────────────────────────────────── -->
 <header>
